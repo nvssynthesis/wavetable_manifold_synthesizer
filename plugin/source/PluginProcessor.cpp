@@ -150,7 +150,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
-        channelData[0] = 0.f;
+        channelData[0] = 0.1f;
     }
 }
 

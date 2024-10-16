@@ -53,3 +53,6 @@ if (MSVC)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
+
+add_subdirectory(RTNeural)
+target_link_libraries(${PROJECT_NAME} LINK_PUBLIC RTNeural)
