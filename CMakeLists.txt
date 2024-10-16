@@ -16,6 +16,14 @@ CPMAddPackage(
         GITHUB_REPOSITORY juce-framework/JUCE
         SOURCE_DIR ${LIB_DIR}/juce
 )
+#CPMAddPackage("gh:fmtlib/fmt#11.0.2")
+#CPMAddPackage("gh:jatinchowdhury18/RTNeural")
+#CPMAddPackage(
+#        NAME RTNEURAL
+#        GITHUB_REPOSITORY jatinchowdhury18/RTNeural
+#        SOURCE_DIR ${LIB_DIR}/RTNeural
+#)
 
 add_subdirectory(plugin)
+add_subdirectory(${LIB_DIR}/RTNeural)
 

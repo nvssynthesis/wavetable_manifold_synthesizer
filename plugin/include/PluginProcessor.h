@@ -1,6 +1,8 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "util.h"
+
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor
@@ -43,6 +45,11 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
 private:
+    ModelType model_;
+
+    // const juce::String logger_fp {get_designated_plugin_path()};
+    juce::FileLogger logger_;
+
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

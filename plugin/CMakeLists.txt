@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.23)
 project(wtianns_rtneural VERSION 0.1.0)
 
 juce_add_plugin(${PROJECT_NAME}
-        COPY_PLUGIN_AFTER_BUILD FALSE
+        COPY_PLUGIN_AFTER_BUILD TRUE
         COMPANY_NAME nvssynthesis
         IS_SYNTH TRUE
         NEEDS_MIDI_INPUT TRUE
@@ -14,19 +14,23 @@ juce_add_plugin(${PROJECT_NAME}
         PRODUCT_NAME "wtianns"
 )
 
+add_compile_definitions(EIGEN_STACK_ALLOCATION_LIMIT=1000000)
+
 # Sets the source files of the plugin project.
 target_sources(${PROJECT_NAME}
         PRIVATE
         source/PluginEditor.cpp
         source/PluginProcessor.cpp
-        include/PluginEditor.h
-        include/PluginProcessor.h
+#        include/PluginEditor.h
+#        include/PluginProcessor.h
 )
 
+message(STATUS "LIB_DIR is set to ${LIB_DIR}")
 # Sets the include directories of the plugin project.
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${LIB_DIR}/RTNeural/RTNeural
 )
 
 # Links to all necessary dependencies. The present ones are recommended by JUCE.
@@ -38,6 +42,7 @@ target_link_libraries(${PROJECT_NAME}
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags
+        RTNeural
 )
 
 # These definitions are recommended by JUCE.
@@ -53,6 +58,3 @@ if (MSVC)
 else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
-
-add_subdirectory(RTNeural)
-target_link_libraries(${PROJECT_NAME} LINK_PUBLIC RTNeural)

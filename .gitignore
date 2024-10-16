@@ -3,4 +3,5 @@ libs/
 .idea/
 cmake/
 cmake-build-debug/
+models/
 .DS_Store

@@ -1,4 +1,5 @@
 #include "PluginProcessor.h"
+#include "model_loader.h"
 #include "PluginEditor.h"
 
 //==============================================================================
@@ -10,8 +11,16 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                       #endif
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
-                       )
+                       ),
+logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
+    auto const modelFilePath =
+        "/Users/nicholassolem/development/CLionProjects/wtianns_rtneural/models/rt_model_2024-05-28_11-54-32.json";
+
+    std::ifstream jsonStream(modelFilePath, std::ifstream::binary);
+    logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
+    // std::cout << "Loading model from path: " << modelFilePath << std::endl;
+    loadModel(jsonStream, this->model_);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
