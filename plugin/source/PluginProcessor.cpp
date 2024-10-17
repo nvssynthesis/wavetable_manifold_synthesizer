@@ -14,6 +14,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        ),
 fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
+freq_buff_(1, (ModelType::output_size-1) * 2),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
@@ -138,12 +139,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     juce::ignoreUnused (midiMessages);
 
     juce::ScopedNoDenormals noDenormals;
-    auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
-        buffer.clear (i, 0, buffer.getNumSamples());
-
 
 
     const std::vector<float> inputs {-7.3205e+00, -9.7124e-01,  2.0997e-02, -2.1979e-02,  5.9661e-02,
@@ -152,20 +148,23 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     std::vector<float> outputs(n_output);
 
     this->model_.forward(&inputs[0]);
-    // std::copy_n(this->model_.getOutputs(), n_output, &outputs[0]);
-    juce::AudioBuffer<float> scratch_buffer_freq_domain(1, (ModelType::output_size-1) * 2);
-    scratch_buffer_freq_domain.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
-    // juce::AudioBuffer<float> scratch_buffer_time_domain(1, n_output);
-    // makeConjugateSymmetric(std::span<float, ModelType::output_size>())
+    freq_buff_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
 
-    fft_.performRealOnlyInverseTransform(scratch_buffer_freq_domain.getWritePointer(0));
+    fft_.performRealOnlyInverseTransform(freq_buff_.getWritePointer(0));
 
-    for (int channel = 0; channel < totalNumInputChannels; ++channel)
+    float mag = freq_buff_.getMagnitude(0, 0, freq_buff_.getNumSamples());
+    if (mag == 0.f) {
+        mag = 1.f;
+    }
+
+    for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
-        channelData[0] = 0.f;
+        for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
+            channelData[samp_idx] = freq_buff_.getSample(0, samp_idx) / mag;
+        }
     }
 }
 

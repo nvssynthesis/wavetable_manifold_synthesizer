@@ -49,6 +49,7 @@ public:
 private:
     ModelType model_;
     juce::dsp::FFT fft_;
+    juce::AudioBuffer<float> freq_buff_;
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;
