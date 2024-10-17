@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 #include "model_loader.h"
 #include "PluginEditor.h"
+#include <cmath>
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
@@ -12,6 +13,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ),
+fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
@@ -139,27 +141,31 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     auto totalNumInputChannels  = getTotalNumInputChannels();
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
-    // In case we have more outputs than inputs, this code clears any output
-    // channels that didn't contain input data, (because these aren't
-    // guaranteed to be empty - they may contain garbage).
-    // This is here to avoid people getting screaming feedback
-    // when they first compile a plugin, but obviously you don't need to keep
-    // this code if your algorithm always overwrites all the output channels.
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
-    // This is the place where you'd normally do the guts of your plugin's
-    // audio processing...
-    // Make sure to reset the state if your inner loop is processing
-    // the samples and the outer loop is handling the channels.
-    // Alternatively, you can process the samples with the channels
-    // interleaved by keeping the same state.
+
+
+    const std::vector<float> inputs {-7.3205e+00, -9.7124e-01,  2.0997e-02, -2.1979e-02,  5.9661e-02,
+                                    -7.7776e-03, -1.0314e-03,  2.4015e-02, -8.4424e-02, -3.4193e-02,
+                                     7.1654e-02,  2.8041e-03};
+    std::vector<float> outputs(n_output);
+
+    this->model_.forward(&inputs[0]);
+    // std::copy_n(this->model_.getOutputs(), n_output, &outputs[0]);
+    juce::AudioBuffer<float> scratch_buffer_freq_domain(1, (ModelType::output_size-1) * 2);
+    scratch_buffer_freq_domain.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
+    // juce::AudioBuffer<float> scratch_buffer_time_domain(1, n_output);
+    // makeConjugateSymmetric(std::span<float, ModelType::output_size>())
+
+    fft_.performRealOnlyInverseTransform(scratch_buffer_freq_domain.getWritePointer(0));
+
     for (int channel = 0; channel < totalNumInputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
-        channelData[0] = 0.1f;
+        channelData[0] = 0.f;
     }
 }
 

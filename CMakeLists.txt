@@ -16,14 +16,29 @@ CPMAddPackage(
         GITHUB_REPOSITORY juce-framework/JUCE
         SOURCE_DIR ${LIB_DIR}/juce
 )
-#CPMAddPackage("gh:fmtlib/fmt#11.0.2")
-#CPMAddPackage("gh:jatinchowdhury18/RTNeural")
-#CPMAddPackage(
-#        NAME RTNEURAL
-#        GITHUB_REPOSITORY jatinchowdhury18/RTNeural
-#        SOURCE_DIR ${LIB_DIR}/RTNeural
-#)
+CPMAddPackage(
+        NAME RTNEURAL
+        GITHUB_REPOSITORY jatinchowdhury18/RTNeural
+        GIT_TAG main
+        SOURCE_DIR ${LIB_DIR}/RTNeural
+)
+CPMAddPackage(
+        NAME CHOWDSP_FFT
+        GITHUB_REPOSITORY Chowdhury-DSP/chowdsp_fft
+        GIT_TAG main
+        SOURCE_DIR ${LIB_DIR}/chowdsp_fft
+)
+CPMAddPackage(
+        NAME FMTLIB
+        GIT_TAG 11.0.2
+        VERSION 11.0.2
+        GITHUB_REPOSITORY fmtlib/fmt
+        SOURCE_DIR ${LIB_DIR}/fmt
+)
 
 add_subdirectory(plugin)
-add_subdirectory(${LIB_DIR}/RTNeural)
+
+target_compile_options(RTNeural PRIVATE
+        -w  # Disable all warnings for GCC/Clang
+)
 

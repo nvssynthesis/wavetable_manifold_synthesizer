@@ -1,6 +1,8 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <chowdsp_fft_juce/chowdsp_fft_juce.h>
+#include <juce_dsp/juce_dsp.h>
 #include "util.h"
 
 
@@ -46,6 +48,7 @@ public:
 
 private:
     ModelType model_;
+    juce::dsp::FFT fft_;
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;
