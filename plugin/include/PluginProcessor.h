@@ -49,10 +49,15 @@ public:
 private:
     ModelType model_;
     juce::dsp::FFT fft_;
+    juce::dsp::WindowingFunction<float> windowing_function_;
     juce::AudioBuffer<float> freq_buff_;
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;
+    juce::WavAudioFormat wav_audio_format_;
+    std::unique_ptr<juce::AudioFormatWriter> audio_format_writer_;
+    bool wav_written_ {false};
+
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)

@@ -14,6 +14,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        ),
 fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
+windowing_function_(ModelType::output_size, juce::dsp::WindowingFunction<float>::WindowingMethod::blackman),
 freq_buff_(1, (ModelType::output_size-1) * 2),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
@@ -24,6 +25,16 @@ logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcom
     logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
     // std::cout << "Loading model from path: " << modelFilePath << std::endl;
     loadModel(jsonStream, this->model_);
+
+    juce::File const wav_file = juce::File(get_designated_plugin_path().getChildFile("debug.wav"));
+    bool const written = wav_file.replaceWithData(nullptr, 0);
+    jassert(written);
+    audio_format_writer_.reset (wav_audio_format_.createWriterFor (new juce::FileOutputStream (wav_file),
+                                      48000.0,
+                                      freq_buff_.getNumChannels(),
+                                      24,
+                                      {},
+                                      0));
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -157,13 +168,22 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         mag = 1.f;
     }
 
+    freq_buff_.applyGain(1.f / mag);
+
+    if (audio_format_writer_ != nullptr) {
+        if (!wav_written_) {
+            audio_format_writer_->writeFromAudioSampleBuffer(freq_buff_, 0, freq_buff_.getNumSamples());
+            wav_written_ = true;
+        }
+    }
+
     for (int channel = 0; channel < totalNumOutputChannels; ++channel)
     {
         auto* channelData = buffer.getWritePointer (channel);
         juce::ignoreUnused (channelData);
         // ..do something to the data...
         for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
-            channelData[samp_idx] = freq_buff_.getSample(0, samp_idx) / mag;
+            channelData[samp_idx] = freq_buff_.getSample(0, samp_idx);
         }
     }
 }
