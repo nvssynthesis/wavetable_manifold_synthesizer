@@ -41,6 +41,7 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE
         juce::juce_audio_utils
         juce::juce_audio_processors
+        juce::juce_audio_basics
         chowdsp::chowdsp_fft_juce
         PUBLIC
         juce::juce_recommended_config_flags

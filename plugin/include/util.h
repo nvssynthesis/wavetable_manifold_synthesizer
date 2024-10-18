@@ -21,6 +21,8 @@ constexpr int n_hidden_1 = 80;
 constexpr int n_hidden_2 = 128;
 constexpr int n_output = 257;
 
+constexpr double nn_sample_rate = 22050.0;
+
 using ModelType = RTNeural::ModelT<float, n_input, n_output,
     RTNeural::DenseT<float, n_input, n_hidden_1>,
     RTNeural::ReLuActivationT<float, n_hidden_1>,
@@ -52,4 +54,21 @@ inline void loadModel(std::ifstream& jsonStream, ModelType& model)
 
     auto& hidden_2 = model.get<4>();
     RTNeural::torch_helpers::loadDense<float> (modelJson, "dense_layers.4.", hidden_2);
+}
+
+template<typename sample_t>
+inline sample_t cubicInterp(sample_t const *const wavetable, sample_t const fIdx, int const winSize)
+{// adapted from https://www.musicdsp.org/en/latest/Other/49-cubic-interpollation.html?highlight=cubic
+    int const iIdx = static_cast<int>(fIdx);// assuming we never get a negative fIdx; then it would round up
+    sample_t const frac = fIdx - static_cast<sample_t>(iIdx);
+
+    sample_t const ym1 = wavetable[(iIdx - 1) & (winSize - 1)];    // could &= the mask here
+    sample_t const y0  = wavetable[(iIdx + 0) & (winSize - 1)];
+    sample_t const y1  = wavetable[(iIdx + 1) & (winSize - 1)];    // and here...
+    sample_t const y2  = wavetable[(iIdx + 2) & (winSize - 1)];    // and here...
+    sample_t const a = (3.f * (y0-y1) - ym1 + y2) * 0.5f;
+    sample_t const b = 2.f*y1 + ym1 - (5.f*y0 + y2) * 0.5f;
+    sample_t const c = (y1 - ym1) * 0.5f;
+    sample_t const y = (((a * frac) + b) * frac + c) * frac + y0;
+    return y;
 }

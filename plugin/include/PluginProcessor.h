@@ -3,8 +3,35 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <chowdsp_fft_juce/chowdsp_fft_juce.h>
 #include <juce_dsp/juce_dsp.h>
+#include <juce_audio_basics/juce_audio_basics.h>
 #include "util.h"
 
+enum class WavetableTransitionStrategy {
+    /*
+     this strategy would look something like this
+     |b0                  |b1
+     /--w0--\/--w0--\/--w0--\/--w1--\
+       /--w0--\/--w0--\/--w0--\/--w1--\
+         /--w0--\/--w0--\/--w0--\/--w1--\
+           /--w0--\/--w0--\/--w1--\/--w1--\
+                           ^ distinctly the 1st window using the next wavetable, because its beginning falls on the next block
+                           however, the windows that were already in progress get to complete using the previous wavetable
+     */
+    finish_leftover_from_last_block_then_switch = 0,
+    /*
+     this strategy looks rather like this
+     |b0                  |b1                  |b2
+     /^^w0^^\/--w0--\/__w0__\/__w2__\/--w2--\/^^w2^^\
+       /^^w0^^\/--w0--\/__w0__\/__w2__\/^^w2^^\/^^w2^^\
+         /^^w0^^\/--w0--\/__w0__\/--w2--\/^^w2^^\/^^w2^^\
+           /^^w0^^\/--w0--\/__w2__\/--w2--\/^^w2^^\/^^w2^^\
+     /__w1__\/--w1--\/^^w1^^\/^^w1^^\/--w1--\/__w1__\
+        /__w1__\/--w1--\/^^w1^^\/--w1--\/__w1__\/__w3__\
+          /__w1__\/--w1--\/^^w1^^\/--w1--\/__w1__\/__w3__\
+            /__w1__\/--w1--\/^^w1^^\/--w1--\/__w1__\/__w3__\
+     */
+    fade_throughout_block = 1
+};
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor
@@ -50,7 +77,12 @@ private:
     ModelType model_;
     juce::dsp::FFT fft_;
     juce::dsp::WindowingFunction<float> windowing_function_;
-    juce::AudioBuffer<float> freq_buff_;
+
+    juce::AudioBuffer<float> wt_buff_prev_;
+    juce::AudioBuffer<float> wt_buff_;
+
+    double f0_ {110.0};
+    double phasor_ {0.0};
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;

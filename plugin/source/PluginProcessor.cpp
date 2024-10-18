@@ -15,7 +15,8 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        ),
 fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
 windowing_function_(ModelType::output_size, juce::dsp::WindowingFunction<float>::WindowingMethod::blackman),
-freq_buff_(1, (ModelType::output_size-1) * 2),
+wt_buff_prev_(1, (ModelType::output_size-1) * 2),
+wt_buff_(1, (ModelType::output_size-1) * 2),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
@@ -31,7 +32,7 @@ logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcom
     jassert(written);
     audio_format_writer_.reset (wav_audio_format_.createWriterFor (new juce::FileOutputStream (wav_file),
                                       48000.0,
-                                      freq_buff_.getNumChannels(),
+                                      wt_buff_.getNumChannels(),
                                       24,
                                       {},
                                       0));
@@ -159,33 +160,39 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     std::vector<float> outputs(n_output);
 
     this->model_.forward(&inputs[0]);
-    freq_buff_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
+    wt_buff_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
 
-    fft_.performRealOnlyInverseTransform(freq_buff_.getWritePointer(0));
+    fft_.performRealOnlyInverseTransform(wt_buff_.getWritePointer(0));
 
-    float mag = freq_buff_.getMagnitude(0, 0, freq_buff_.getNumSamples());
+    float mag = wt_buff_.getMagnitude(0, 0, wt_buff_.getNumSamples());
     if (mag == 0.f) {
         mag = 1.f;
     }
 
-    freq_buff_.applyGain(1.f / mag);
+    wt_buff_.applyGain(1.f / mag);
 
     if (audio_format_writer_ != nullptr) {
         if (!wav_written_) {
-            audio_format_writer_->writeFromAudioSampleBuffer(freq_buff_, 0, freq_buff_.getNumSamples());
+            audio_format_writer_->writeFromAudioSampleBuffer(wt_buff_, 0, wt_buff_.getNumSamples());
             wav_written_ = true;
         }
     }
 
-    for (int channel = 0; channel < totalNumOutputChannels; ++channel)
-    {
-        auto* channelData = buffer.getWritePointer (channel);
-        juce::ignoreUnused (channelData);
-        // ..do something to the data...
-        for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
-            channelData[samp_idx] = freq_buff_.getSample(0, samp_idx);
+
+    for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
+        float const waveform = wt_buff_.getSample(0, samp_idx); // actually want to interpolate
+        // cubicInterp()
+
+        for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
+
+            auto* channelData = buffer.getWritePointer (channel);
+            channelData[samp_idx] = waveform;
+
         }
     }
+
+    phasor_ += f0_ / getSampleRate();
+    phasor_ -= static_cast<int>(phasor_);
 }
 
 //==============================================================================
