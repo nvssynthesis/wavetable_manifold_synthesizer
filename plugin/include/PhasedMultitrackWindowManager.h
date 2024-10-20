@@ -42,7 +42,7 @@ public:
         std::array<double, num_waveforms> window_per_waveform_ {};
         double phase_ {};
     };
-    WindowAndPhase calculateWindowAndPhase() {
+    std::array<WindowAndPhase, num_overlapping_windows> calculateWindowAndPhase() {
         std::array<WindowAndPhase, num_overlapping_windows> windows_and_phases;
         for (size_t i = 0; i < num_overlapping_windows; ++i) {
             windows_and_phases[i].phase_ = process_phase_for_track(master_phase_, i, num_overlapping_windows);
@@ -73,7 +73,7 @@ public:
 private:
     struct TrackwiseData {
         double previous_phase_; // actually this could be excluded from state, by making master phase include history, then computing per-window phase history
-        int which_waveform_;  // maybe could just be the float pointer? then the class itself could handle reading out the waveforms
+        size_t which_waveform_;  // maybe could just be the float pointer? then the class itself could handle reading out the waveforms
         bool allow_waveform_switch_;
     };
     double master_phase_ {0.0};

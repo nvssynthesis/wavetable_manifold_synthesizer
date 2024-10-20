@@ -81,14 +81,11 @@ private:
     juce::dsp::WindowingFunction<float> windowing_function_;
 
     WavetableTransitionStrategy wt_transition_strategy_{WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch};
-    static constexpr std::map<WavetableTransitionStrategy, size_t> wavetable_history_required_by_strategy {
-        {WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch, 2},
-        {WavetableTransitionStrategy::fade_throughout_block, 4}
-    };
-    std::vector<juce::AudioBuffer<float>> wt_buff_;
+    juce::AudioBuffer<float> wt_buff_prev_{juce::AudioBuffer<float>(1, (ModelType::output_size-1) * 2)};
+    juce::AudioBuffer<float> wt_buff_curr_{juce::AudioBuffer<float>(1, (ModelType::output_size-1) * 2)};
 
-    double f0_ {110.0};
-    double phasor_ {0.0};
+    double f0_ {66.0};
+    PhasedFourTrackWindowManager phased_hannings;
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;

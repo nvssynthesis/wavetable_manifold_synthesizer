@@ -32,7 +32,7 @@ target_include_directories(${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${LIB_DIR}/RTNeural/RTNeural
         ${LIB_DIR}/chowdsp_fft
-        ${LIB_DIR}/fmt
+        ${LIB_DIR}/fmt/include
 )
 
 # Links to all necessary dependencies. The present ones are recommended by JUCE.
@@ -43,6 +43,7 @@ target_link_libraries(${PROJECT_NAME}
         juce::juce_audio_processors
         juce::juce_audio_basics
         chowdsp::chowdsp_fft_juce
+        fmt::fmt
         PUBLIC
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags

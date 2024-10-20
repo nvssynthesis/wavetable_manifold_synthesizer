@@ -2,6 +2,7 @@
 #include "model_loader.h"
 #include "PluginEditor.h"
 #include <cmath>
+#include "fmt/base.h"
 
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
@@ -16,7 +17,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
 fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
 windowing_function_(ModelType::output_size, juce::dsp::WindowingFunction<float>::WindowingMethod::blackman),
 wt_buff_prev_(1, (ModelType::output_size-1) * 2),
-wt_buff_(1, (ModelType::output_size-1) * 2),
+wt_buff_curr_(1, (ModelType::output_size-1) * 2),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
@@ -32,7 +33,7 @@ logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcom
     jassert(written);
     audio_format_writer_.reset (wav_audio_format_.createWriterFor (new juce::FileOutputStream (wav_file),
                                       48000.0,
-                                      wt_buff_.getNumChannels(),
+                                      wt_buff_curr_.getNumChannels(),
                                       24,
                                       {},
                                       0));
@@ -145,7 +146,7 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
   #endif
 }
 
-void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
+void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBuffer,
                                               juce::MidiBuffer& midiMessages)
 {
     juce::ignoreUnused (midiMessages);
@@ -160,39 +161,53 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     std::vector<float> outputs(n_output);
 
     this->model_.forward(&inputs[0]);
-    wt_buff_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
+    wt_buff_curr_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
+    if (std::isnan(wt_buff_curr_.getSample(0, 0))) {
+        fmt::print("buffer contains NaN");
+        logger_.logMessage("buffer contains NaN");
+        return;
+    }
+    fft_.performRealOnlyInverseTransform(wt_buff_curr_.getWritePointer(0));
 
-    fft_.performRealOnlyInverseTransform(wt_buff_.getWritePointer(0));
+    int const wavelength = wt_buff_curr_.getNumSamples();
 
-    float mag = wt_buff_.getMagnitude(0, 0, wt_buff_.getNumSamples());
+    float mag = wt_buff_curr_.getMagnitude(0, 0, wavelength);
     if (mag == 0.f) {
         mag = 1.f;
     }
 
-    wt_buff_.applyGain(1.f / mag);
+    wt_buff_curr_.applyGain(1.f / mag);
 
     if (audio_format_writer_ != nullptr) {
         if (!wav_written_) {
-            audio_format_writer_->writeFromAudioSampleBuffer(wt_buff_, 0, wt_buff_.getNumSamples());
+            audio_format_writer_->writeFromAudioSampleBuffer(wt_buff_curr_, 0, wavelength);
             wav_written_ = true;
         }
     }
 
-
+    phased_hannings.allowTransition();
     for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
-        float const waveform = wt_buff_.getSample(0, samp_idx); // actually want to interpolate
-        // cubicInterp()
+        auto wins_and_phases = phased_hannings.calculateWindowAndPhase();
+        float samp = 0;
+        for (auto & wins_and_phase : wins_and_phases){
+            float samp_tmp = cubicInterp(wt_buff_curr_.getReadPointer(0),
+                static_cast<float>(wins_and_phase.phase_), wavelength);
+            samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[0]);
+            samp += samp_tmp;
 
+            samp_tmp = cubicInterp(wt_buff_prev_.getReadPointer(0),
+                static_cast<float>(wins_and_phase.phase_), wavelength);
+            samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[1]);
+            samp += samp_tmp;
+        }
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
 
-            auto* channelData = buffer.getWritePointer (channel);
-            channelData[samp_idx] = waveform;
-
+            auto* channelData = outputBuffer.getWritePointer (channel);
+            channelData[samp_idx] = samp;
         }
+        phased_hannings.increment_phase(f0_ / getSampleRate());
     }
-
-    phasor_ += f0_ / getSampleRate();
-    phasor_ -= static_cast<int>(phasor_);
+    wt_buff_prev_ = wt_buff_curr_;
 }
 
 //==============================================================================

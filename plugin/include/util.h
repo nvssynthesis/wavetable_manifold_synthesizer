@@ -57,8 +57,11 @@ inline void loadModel(std::ifstream& jsonStream, ModelType& model)
 }
 
 template<typename sample_t>
-inline sample_t cubicInterp(sample_t const *const wavetable, sample_t const fIdx, int const winSize)
+[[nodiscard]] inline sample_t cubicInterp(sample_t const *const wavetable, sample_t const phase, int const winSize)
 {// adapted from https://www.musicdsp.org/en/latest/Other/49-cubic-interpollation.html?highlight=cubic
+    assert(phase >= 0);
+    assert(phase <= 1);
+    sample_t fIdx = phase * winSize;
     int const iIdx = static_cast<int>(fIdx);// assuming we never get a negative fIdx; then it would round up
     sample_t const frac = fIdx - static_cast<sample_t>(iIdx);
 
