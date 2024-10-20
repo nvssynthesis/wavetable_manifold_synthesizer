@@ -4,6 +4,7 @@
 #include <chowdsp_fft_juce/chowdsp_fft_juce.h>
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_basics/juce_audio_basics.h>
+#include "PhasedMultitrackWindowManager.h"
 #include "util.h"
 
 enum class WavetableTransitionStrategy {
@@ -32,6 +33,7 @@ enum class WavetableTransitionStrategy {
      */
     fade_throughout_block = 1
 };
+
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor
@@ -78,8 +80,12 @@ private:
     juce::dsp::FFT fft_;
     juce::dsp::WindowingFunction<float> windowing_function_;
 
-    juce::AudioBuffer<float> wt_buff_prev_;
-    juce::AudioBuffer<float> wt_buff_;
+    WavetableTransitionStrategy wt_transition_strategy_{WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch};
+    static constexpr std::map<WavetableTransitionStrategy, size_t> wavetable_history_required_by_strategy {
+        {WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch, 2},
+        {WavetableTransitionStrategy::fade_throughout_block, 4}
+    };
+    std::vector<juce::AudioBuffer<float>> wt_buff_;
 
     double f0_ {110.0};
     double phasor_ {0.0};
