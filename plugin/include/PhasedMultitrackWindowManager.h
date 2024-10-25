@@ -1,10 +1,22 @@
 #pragma once
 #include <array>
 
+template<typename T>
+inline T wrap01(T x) {
+    /*
+     this comes from my nvs_libraries/include/nvs_gen.h. if i end up needing more from it, just link it.
+     */
+    T y = x - static_cast<long long int>(x);
+    if (x < 0){
+        y = static_cast<T>(1) + y;
+    }
+    return y;
+}
+
 inline double process_phase_for_track(double phase, size_t const window_idx, size_t const num_windows) {
     double const window_gap = static_cast<double>(window_idx) / static_cast<double>(num_windows);
     phase -= window_gap;
-    phase = std::fmod(phase, 1.0);
+    phase = wrap01<double>(phase);
     return phase;
 }
 inline double hanning(double const phase) {

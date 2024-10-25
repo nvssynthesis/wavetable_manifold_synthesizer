@@ -13,7 +13,7 @@ freqSlider_(p.getApvts(), params::params_e::f0)
 
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
-    setSize (400, 300);
+    setSize (900, 300);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -35,7 +35,7 @@ void AudioPluginAudioProcessorEditor::resized()
 {
     auto x = 0;
     auto y = 0;
-    auto width = getWidth() / 4;
+    auto width = getWidth() / params::to_idx(params::params_e::num_params);
     auto height = getHeight();
     freqSlider_.slider_.setBounds(x, y, width, height);
     x += width;

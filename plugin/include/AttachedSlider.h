@@ -8,7 +8,7 @@ struct AttachedSlider {
 
     AttachedSlider(juce::AudioProcessorValueTreeState &apvts,
         params::params_e param,
-        Slider::SliderStyle sliderStyle = Slider::SliderStyle::RotaryHorizontalVerticalDrag,
+        Slider::SliderStyle sliderStyle = Slider::SliderStyle::LinearBarVertical,
         juce::Slider::TextEntryBoxPosition entryPos = juce::Slider::TextBoxBelow);
 
     Slider slider_;

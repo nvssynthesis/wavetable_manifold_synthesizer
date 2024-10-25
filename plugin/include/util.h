@@ -60,7 +60,7 @@ namespace nvs {
     [[nodiscard]] inline sample_t cubicInterp(sample_t const *const wavetable, sample_t  phase, int const winSize)
     {// adapted from https://www.musicdsp.org/en/latest/Other/49-cubic-interpollation.html?highlight=cubic
         // assert(phase >= 0);
-        phase = std::fmod(phase, 1.0);
+        // phase = std::fmod(phase, 1.0);  // if i can get away with taking this out, do it
         assert(phase <= 1);
         sample_t fIdx = phase * winSize;
         int const iIdx = static_cast<int>(fIdx);// assuming we never get a negative fIdx; then it would round up

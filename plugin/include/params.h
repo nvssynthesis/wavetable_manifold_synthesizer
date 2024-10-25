@@ -1,5 +1,6 @@
 #pragma once
 #include <JuceHeader.h>
+#include <sys/stat.h>
 
 struct params {
     /*
@@ -41,7 +42,10 @@ struct params {
     [[nodiscard]] static juce::NormalisableRange<float_t> get_normalizable_range(params_e const p){
         auto min = static_cast<float_t>(params_to_min_map.at(p));
         auto max = static_cast<float_t>(params_to_max_map.at(p));
-        return juce::NormalisableRange<float_t>(min, max);
+
+        float_t interval = 0.0;
+        auto skew_factor = static_cast<float_t>(params_to_skew_factor_map.at(p));
+        return juce::NormalisableRange<float_t>(min, max, interval, skew_factor);
     }
     template<typename float_t>
     [[nodiscard]] static float_t get_default(params_e const p) {
@@ -54,5 +58,6 @@ private:
 
     const static std::map<params_e, double> params_to_min_map;
     const static std::map<params_e, double> params_to_max_map;
+    const static std::map<params_e, double> params_to_skew_factor_map;
     const static std::map<params_e, double> params_to_default_map;
 };

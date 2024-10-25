@@ -203,6 +203,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
     auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
 
     phased_hannings_.allowTransition();
+
     for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
         auto wins_and_phases = phased_hannings_.calculateWindowAndPhase();
         float samp = 0;
