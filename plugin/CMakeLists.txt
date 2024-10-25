@@ -22,6 +22,7 @@ target_sources(${PROJECT_NAME}
         source/PluginEditor.cpp
         source/PluginProcessor.cpp
         source/params.cpp
+        source/AttachedSlider.cpp
 #        include/PluginEditor.h
 #        include/PluginProcessor.h
 )
