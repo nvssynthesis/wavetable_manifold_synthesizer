@@ -79,6 +79,7 @@ public:
         return apvts_;
     }
 private:
+    using ModelType = nvs::rtn::ModelType;
     ModelType model_;
     juce::dsp::FFT fft_;
 

@@ -33,7 +33,7 @@ fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
 wt_buff_prev_(1, (ModelType::output_size-1) * 2),
 wt_buff_curr_(1, (ModelType::output_size-1) * 2),
 apvts_(*this, nullptr, juce::Identifier("params"), createParameterLayout()),
-logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
+logger_(juce::File(nvs::get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
         "/Users/nicholassolem/development/CLionProjects/wtianns_rtneural/models/gru.json";
@@ -41,10 +41,10 @@ logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcom
     std::ifstream jsonStream(modelFilePath, std::ifstream::binary);
     logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
     // std::cout << "Loading model from path: " << modelFilePath << std::endl;
-    loadModel(jsonStream, this->model_);
+    nvs::rtn::loadModel(jsonStream, this->model_);
     logger_.logMessage("Model loaded.");
 
-    juce::File const wav_file = juce::File(get_designated_plugin_path().getChildFile("debug.wav"));
+    juce::File const wav_file = juce::File(nvs::get_designated_plugin_path().getChildFile("debug.wav"));
     bool const written = wav_file.replaceWithData(nullptr, 0);
     jassert(written);
     audio_format_writer_.reset (wav_audio_format_.createWriterFor (new juce::FileOutputStream (wav_file),
@@ -174,7 +174,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
     const std::vector<float> inputs {-7.3205e+00, -9.7124e-01,  2.0997e-02, -2.1979e-02,  5.9661e-02,
                                     -7.7776e-03, -1.0314e-03,  2.4015e-02, -8.4424e-02, -3.4193e-02,
                                      2.1654e-03,  2.8041e-03};
-    std::vector<float> outputs(n_output);
+    std::vector<float> outputs(nvs::rtn::n_output);
 
     this->model_.forward(&inputs[0]);
     wt_buff_curr_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
@@ -207,12 +207,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
         auto wins_and_phases = phased_hannings_.calculateWindowAndPhase();
         float samp = 0;
         for (auto & wins_and_phase : wins_and_phases){
-            float samp_tmp = cubicInterp(wt_buff_curr_.getReadPointer(0),
+            float samp_tmp = nvs::cubicInterp(wt_buff_curr_.getReadPointer(0),
                 static_cast<float>(wins_and_phase.phase_), wavelength);
             samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[0]);
             samp += samp_tmp;
 
-            samp_tmp = cubicInterp(wt_buff_prev_.getReadPointer(0),
+            samp_tmp = nvs::cubicInterp(wt_buff_prev_.getReadPointer(0),
                 static_cast<float>(wins_and_phase.phase_), wavelength);
             samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[1]);
             samp += samp_tmp;
