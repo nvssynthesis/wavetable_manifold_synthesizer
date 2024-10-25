@@ -13,7 +13,7 @@ juce_add_plugin(${PROJECT_NAME}
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "wtianns"
 )
-
+juce_generate_juce_header(${PROJECT_NAME})
 add_compile_definitions(EIGEN_STACK_ALLOCATION_LIMIT=1000000)
 
 # Sets the source files of the plugin project.
@@ -21,6 +21,7 @@ target_sources(${PROJECT_NAME}
         PRIVATE
         source/PluginEditor.cpp
         source/PluginProcessor.cpp
+        source/params.cpp
 #        include/PluginEditor.h
 #        include/PluginProcessor.h
 )

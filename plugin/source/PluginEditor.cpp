@@ -3,9 +3,14 @@
 
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
+    : AudioProcessorEditor (&p), processorRef (p),
+freqSlider_(p.getApvts(), params::params_e::f0)
 {
-    juce::ignoreUnused (processorRef);
+    addAndMakeVisible(freqSlider_.slider_);
+
+    // freqSlider_.setSliderStyle(juce::Slider::SliderStyle::Rotary);
+    // freqSlider_.setRange(5.0, 600.0);
+
     // Make sure that before the constructor has finished, you've set the
     // editor's size to whatever you need it to be.
     setSize (400, 300);

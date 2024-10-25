@@ -3,7 +3,21 @@
 #include "PluginEditor.h"
 #include <cmath>
 #include "fmt/base.h"
+#include "params.h"
+juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
+    std::vector<std::unique_ptr<juce::RangedAudioParameter>> parameters;
 
+    for (int i = 0; i < params::to_idx(params::params_e::num_params); ++i){
+        params::params_e p = params::from_idx(i);
+        parameters.push_back(std::make_unique<juce::AudioParameterFloat>(juce::
+                    ParameterID(params::get_param_id(p), 1),
+                    params::get_param_name(p),
+                    juce::NormalisableRange<float>(20.0, 12000.0),
+                    110.0));
+    }
+
+    return {parameters.begin(), parameters.end()};
+}
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -15,18 +29,19 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                      #endif
                        ),
 fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
-windowing_function_(ModelType::output_size, juce::dsp::WindowingFunction<float>::WindowingMethod::blackman),
 wt_buff_prev_(1, (ModelType::output_size-1) * 2),
 wt_buff_curr_(1, (ModelType::output_size-1) * 2),
+apvts_(*this, nullptr, juce::Identifier("params"), createParameterLayout()),
 logger_(juce::File(get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
     auto const modelFilePath =
-        "/Users/nicholassolem/development/CLionProjects/wtianns_rtneural/models/rt_model_2024-05-28_11-54-32.json";
+        "/Users/nicholassolem/development/CLionProjects/wtianns_rtneural/models/gru.json";
 
     std::ifstream jsonStream(modelFilePath, std::ifstream::binary);
     logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
     // std::cout << "Loading model from path: " << modelFilePath << std::endl;
     loadModel(jsonStream, this->model_);
+    logger_.logMessage("Model loaded.");
 
     juce::File const wav_file = juce::File(get_designated_plugin_path().getChildFile("debug.wav"));
     bool const written = wav_file.replaceWithData(nullptr, 0);
@@ -157,7 +172,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
 
     const std::vector<float> inputs {-7.3205e+00, -9.7124e-01,  2.0997e-02, -2.1979e-02,  5.9661e-02,
                                     -7.7776e-03, -1.0314e-03,  2.4015e-02, -8.4424e-02, -3.4193e-02,
-                                     7.1654e-02,  2.8041e-03};
+                                     2.1654e-03,  2.8041e-03};
     std::vector<float> outputs(n_output);
 
     this->model_.forward(&inputs[0]);
@@ -184,10 +199,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
             wav_written_ = true;
         }
     }
+    auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
 
-    phased_hannings.allowTransition();
+    phased_hannings_.allowTransition();
     for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
-        auto wins_and_phases = phased_hannings.calculateWindowAndPhase();
+        auto wins_and_phases = phased_hannings_.calculateWindowAndPhase();
         float samp = 0;
         for (auto & wins_and_phase : wins_and_phases){
             float samp_tmp = cubicInterp(wt_buff_curr_.getReadPointer(0),
@@ -200,12 +216,15 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
             samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[1]);
             samp += samp_tmp;
         }
+
+        samp = samp > 1.f ? 1.f : samp;
+        samp = samp < -1.f ? -1.f : samp;
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
 
             auto* channelData = outputBuffer.getWritePointer (channel);
-            channelData[samp_idx] = samp;
+            channelData[samp_idx] = samp * 0.1f;
         }
-        phased_hannings.increment_phase(f0_ / getSampleRate());
+        phased_hannings_.increment_phase(f0_val / getSampleRate());
     }
     wt_buff_prev_ = wt_buff_curr_;
 }
@@ -227,14 +246,14 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    // juce::MemoryOutputStream (destData, true).writeFloat (*ap_f0_);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
+    // *ap_f0_ = juce::MemoryInputStream (data, static_cast<size_t> (sizeInBytes), false).readFloat();
 }
 
 //==============================================================================

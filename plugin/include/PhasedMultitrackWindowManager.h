@@ -61,7 +61,7 @@ public:
         return windows_and_phases;
     }
     void increment_phase(double const frequency) {
-        master_phase_ += frequency;
+        master_phase_ += frequency * num_wins_inv_;
         if (master_phase_ > 1.0) {
             master_phase_ -= 1.0;
         }
@@ -77,6 +77,7 @@ private:
         bool allow_waveform_switch_;
     };
     double master_phase_ {0.0};
+    constexpr static double num_wins_inv_ { 1.0 / num_overlapping_windows };
     std::array<TrackwiseData, num_overlapping_windows> trackwise_data_;
 };
 

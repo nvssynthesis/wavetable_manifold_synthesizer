@@ -75,17 +75,25 @@ public:
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
 
+    juce::AudioProcessorValueTreeState &getApvts() {
+        return apvts_;
+    }
 private:
     ModelType model_;
     juce::dsp::FFT fft_;
-    juce::dsp::WindowingFunction<float> windowing_function_;
 
     WavetableTransitionStrategy wt_transition_strategy_{WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch};
+    /* This strategy may actually require more than 2 buffers, in case there is a wavelength lasting multiple buffers.
+        In that case, the previous buffer should not be updated until the newest buffer is properly faded in.
+        But >2 might be required in case e.g. one phase allows the new wave at t_1, but another phase allows the new wave at t_2.
+    */
     juce::AudioBuffer<float> wt_buff_prev_{juce::AudioBuffer<float>(1, (ModelType::output_size-1) * 2)};
     juce::AudioBuffer<float> wt_buff_curr_{juce::AudioBuffer<float>(1, (ModelType::output_size-1) * 2)};
 
-    double f0_ {66.0};
-    PhasedFourTrackWindowManager phased_hannings;
+    juce::AudioProcessorValueTreeState apvts_;
+    // double f0_ {66.0};
+    // juce::AudioParameterFloat *ap_f0_;
+    PhasedFourTrackWindowManager phased_hannings_;
 
     // const juce::String logger_fp {get_designated_plugin_path()};
     juce::FileLogger logger_;
@@ -97,3 +105,5 @@ private:
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };
+
+juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
