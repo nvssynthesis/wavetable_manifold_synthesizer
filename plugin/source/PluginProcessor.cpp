@@ -4,6 +4,7 @@
 #include <cmath>
 #include "fmt/base.h"
 #include "params.h"
+
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> parameters;
 
@@ -12,8 +13,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
         parameters.push_back(std::make_unique<juce::AudioParameterFloat>(juce::
                     ParameterID(params::get_param_id(p), 1),
                     params::get_param_name(p),
-                    juce::NormalisableRange<float>(20.0, 12000.0),
-                    110.0));
+                    params::get_normalizable_range<float>(p),
+                    params::get_default<float>(p)));
     }
 
     return {parameters.begin(), parameters.end()};

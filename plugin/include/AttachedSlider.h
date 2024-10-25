@@ -18,7 +18,7 @@ struct AttachedSlider {
     attachment_(apvts, params::get_param_id(param), slider_)
     {
         slider_.setSliderStyle(sliderStyle);
-        slider_.setNormalisableRange(/*getNormalizableRange<double>(param)*/ juce::NormalisableRange<double>(0.0, 1.0));
+        slider_.setNormalisableRange(params::get_normalizable_range<double>(param));
         slider_.setTextBoxStyle(entryPos, false, 50, 25);
         slider_.setValue(/*getParamDefault(param)*/ 0.0);
 

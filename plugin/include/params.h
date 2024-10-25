@@ -37,8 +37,22 @@ struct params {
     [[nodiscard]] static String get_param_id(params_e const p) {
         return params_to_id_map.at(p);
     }
-private:
-    const static std::map<params_e, String> /*const*/ params_to_name_map;
-    const static std::map<params_e, String> /*const*/ params_to_id_map;
-};
+    template<typename float_t>
+    [[nodiscard]] static juce::NormalisableRange<float_t> get_normalizable_range(params_e const p){
+        auto min = static_cast<float_t>(params_to_min_map.at(p));
+        auto max = static_cast<float_t>(params_to_max_map.at(p));
+        return juce::NormalisableRange<float_t>(min, max);
+    }
+    template<typename float_t>
+    [[nodiscard]] static float_t get_default(params_e const p) {
+        return static_cast<float_t>(params_to_default_map.at(p));
+    }
 
+private:
+    const static std::map<params_e, String> params_to_name_map;
+    const static std::map<params_e, String> params_to_id_map;
+
+    const static std::map<params_e, double> params_to_min_map;
+    const static std::map<params_e, double> params_to_max_map;
+    const static std::map<params_e, double> params_to_default_map;
+};

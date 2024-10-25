@@ -33,6 +33,10 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
 void AudioPluginAudioProcessorEditor::resized()
 {
-    // This is generally where you'll want to lay out the positions of any
-    // subcomponents in your editor..
+    auto x = 0;
+    auto y = 0;
+    auto width = getWidth() / 4;
+    auto height = getHeight();
+    freqSlider_.slider_.setBounds(x, y, width, height);
+    x += width;
 }
