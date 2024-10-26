@@ -15,7 +15,7 @@ public:
     void resized() override;
 
 private:
-    AttachedSlider freqSlider_;
+    std::vector<std::unique_ptr<AttachedSlider>> sliders_;
 
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

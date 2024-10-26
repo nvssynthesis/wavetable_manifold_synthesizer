@@ -3,16 +3,22 @@
 
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p),
-freqSlider_(p.getApvts(), params::params_e::f0)
+    : AudioProcessorEditor (&p), processorRef (p)
+,  sliders_([&]() {
+         std::vector<std::unique_ptr<AttachedSlider>> temp;
+         auto constexpr N = params::to_idx( params::params_e::num_params );
+         temp.reserve(N);
+         for (int i = 0; i < N; ++i) {
+             temp.emplace_back(std::make_unique<AttachedSlider>(p.getApvts(), params::from_idx(i)));
+         }
+         return temp;
+     }())
 {
-    addAndMakeVisible(freqSlider_.slider_);
 
-    // freqSlider_.setSliderStyle(juce::Slider::SliderStyle::Rotary);
-    // freqSlider_.setRange(5.0, 600.0);
+    for (int i = 0; i < params::to_idx( params::params_e::num_params ); ++i) {
+        addAndMakeVisible(sliders_[i]->slider_);
+    }
 
-    // Make sure that before the constructor has finished, you've set the
-    // editor's size to whatever you need it to be.
     setSize (900, 300);
 }
 
@@ -35,8 +41,11 @@ void AudioPluginAudioProcessorEditor::resized()
 {
     auto x = 0;
     auto y = 0;
-    auto width = getWidth() / params::to_idx(params::params_e::num_params);
-    auto height = getHeight();
-    freqSlider_.slider_.setBounds(x, y, width, height);
-    x += width;
+    auto const width = getWidth() / params::to_idx(params::params_e::num_params);
+    auto const height = getHeight();
+    // freqSlider_.slider_.setBounds(x, y, width, height);
+    for (auto &slider_ptr : sliders_) {
+        slider_ptr->slider_.setBounds(x, y, width, height);
+        x += width;
+    }
 }
