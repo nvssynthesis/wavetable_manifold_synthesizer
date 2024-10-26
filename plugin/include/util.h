@@ -20,7 +20,6 @@ namespace nvs {
 
         using ModelType = RTNeural::ModelT<float, n_input, n_output,
             RTNeural::GRULayerT<float, n_input, n_hidden>,
-            RTNeural::GRULayerT<float, n_hidden, n_hidden>,
             RTNeural::DenseT<float, n_hidden, n_output>,
             RTNeural::ReLuActivationT<float, n_output>
         >;
@@ -44,7 +43,7 @@ namespace nvs {
             auto& gru1 = model.get<0>();
             RTNeural::torch_helpers::loadGRU<float> (modelJson, "gru.", gru1);
 
-            auto& dense = model.get<2>();
+            auto& dense = model.get<1>();
             RTNeural::torch_helpers::loadDense<float>(modelJson, "dense_layers.0.", dense);
         }
     }   // namespace rtn

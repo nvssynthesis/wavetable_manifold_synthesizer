@@ -130,6 +130,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     juce::ignoreUnused (sampleRate, samplesPerBlock);
+    model_.reset();
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -170,10 +171,17 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
     juce::ScopedNoDenormals noDenormals;
     auto totalNumOutputChannels = getTotalNumOutputChannels();
 
+    auto constexpr f0_max_trained_on = 4000.f;
+    auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
+    auto const cc0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc0))->load();
+    auto const cc1_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc1))->load();
+    auto const cc2_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc2))->load();
+    auto const cc3_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc3))->load();
+    auto const cc4_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc4))->load();
 
-    const std::vector<float> inputs {-7.3205e+00, -9.7124e-01,  2.0997e-02, -2.1979e-02,  5.9661e-02,
+    const std::vector<float> inputs {cc0_val, cc1_val,  cc2_val, cc3_val,  cc4_val,
                                     -7.7776e-03, -1.0314e-03,  2.4015e-02, -8.4424e-02, -3.4193e-02,
-                                     2.1654e-03,  2.8041e-03};
+                                     2.1654e-03,  f0_val/f0_max_trained_on};
     std::vector<float> outputs(nvs::rtn::n_output);
 
     this->model_.forward(&inputs[0]);
@@ -200,7 +208,6 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
             wav_written_ = true;
         }
     }
-    auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
 
     phased_hannings_.allowTransition();
 
@@ -219,12 +226,14 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
             samp += samp_tmp;
         }
 
-        samp = samp > 1.f ? 1.f : samp;
-        samp = samp < -1.f ? -1.f : samp;
+        samp *= 0.07f;
+        auto constexpr maxamp = 2.4f;
+        samp = samp > maxamp ? maxamp : samp;
+        samp = samp < -maxamp ? -maxamp : samp;
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
 
             auto* channelData = outputBuffer.getWritePointer (channel);
-            channelData[samp_idx] = samp * 0.1f;
+            channelData[samp_idx] = samp * 0.9f;
         }
         phased_hannings_.increment_phase(f0_val / getSampleRate());
     }

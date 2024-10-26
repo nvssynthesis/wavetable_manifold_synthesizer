@@ -19,6 +19,11 @@ struct params {
     using String = juce::String;
     enum class params_e {
         f0 = 0,
+        cc0,
+        cc1,
+        cc2,
+        cc3,
+        cc4,
         num_params
     };
 
