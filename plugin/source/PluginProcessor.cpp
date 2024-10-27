@@ -178,10 +178,16 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
     auto const cc2_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc2))->load();
     auto const cc3_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc3))->load();
     auto const cc4_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc4))->load();
+    auto const cc5_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc5))->load();
+    auto const cc6_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc6))->load();
+    auto const cc7_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc7))->load();
+    auto const cc8_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc8))->load();
+    auto const cc9_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc9))->load();
+    auto const cc10_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc10))->load();
 
     const std::vector<float> inputs {cc0_val, cc1_val,  cc2_val, cc3_val,  cc4_val,
-                                    -7.7776e-03, -1.0314e-03,  2.4015e-02, -8.4424e-02, -3.4193e-02,
-                                     2.1654e-03,  f0_val/f0_max_trained_on};
+                                    cc5_val, cc6_val,  cc7_val, cc8_val, cc9_val,
+                                     cc10_val,  f0_val};
     std::vector<float> outputs(nvs::rtn::n_output);
 
     this->model_.forward(&inputs[0]);
