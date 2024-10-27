@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.23)
 project(wtianns_rtneural VERSION 0.1.0)
 
 juce_add_plugin(${PROJECT_NAME}
-        COPY_PLUGIN_AFTER_BUILD TRUE
+#        COPY_PLUGIN_AFTER_BUILD TRUE
         COMPANY_NAME nvssynthesis
         IS_SYNTH TRUE
         NEEDS_MIDI_INPUT TRUE
@@ -13,6 +13,9 @@ juce_add_plugin(${PROJECT_NAME}
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "wtianns"
 )
+
+juce_enable_copy_plugin_step(${PROJECT_NAME})
+
 juce_generate_juce_header(${PROJECT_NAME})
 add_compile_definitions(EIGEN_STACK_ALLOCATION_LIMIT=1000000)
 
@@ -23,11 +26,8 @@ target_sources(${PROJECT_NAME}
         source/PluginProcessor.cpp
         source/params.cpp
         source/AttachedSlider.cpp
-#        include/PluginEditor.h
-#        include/PluginProcessor.h
 )
 
-message(STATUS "LIB_DIR is set to ${LIB_DIR}")
 # Sets the include directories of the plugin project.
 target_include_directories(${PROJECT_NAME}
         PUBLIC
