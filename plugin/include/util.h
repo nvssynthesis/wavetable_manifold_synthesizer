@@ -5,34 +5,47 @@
 
 namespace nvs {
 
+    inline juce::File get_designated_plugin_path() {
+        juce::File const app_data_dir = juce::File::getSpecialLocation(juce::File::SpecialLocationType::userApplicationDataDirectory);
+        juce::File const wtianns_files_path = app_data_dir.getChildFile("nvssynthesis").getChildFile("wtianns");
+        return wtianns_files_path;
+    }
+
     namespace rtn {
         namespace fs = std::filesystem;
 
-        const std::string js_fn = "models/rt_model_2024-05-28_11-54-32.json";
+        const std::string js_rtneural_fn = "models/rt_model_2024-11-20_20-51-12.json";
         const std::string project_root = "wtianns_rtneural";
 
-        constexpr int n_mfcc = 11;
-        constexpr int n_input = n_mfcc + 1;
-        constexpr int n_hidden = 128;
-        constexpr int n_output = 257;
+        constexpr bool include_voicedness = true;
+        constexpr bool include_frequency = true;
+        constexpr int n_pitch = static_cast<int>(include_frequency) + static_cast<int>(include_voicedness);
 
-        constexpr double nn_sample_rate = 22050.0;
+        constexpr int n_mfcc = 11;
+        constexpr int n_mfcc_dim_reduced = 3;
+        constexpr int n_input = n_mfcc_dim_reduced + n_pitch;
+
+        constexpr int n_encoded = n_mfcc + n_pitch;
+
+        constexpr int n_hidden = 132;
+        constexpr int n_output = 513;
+
+        constexpr float F_MIN_DETECTED = 46.f;
+
+        constexpr double nn_sample_rate = 16000.0;
 
         using ModelType = RTNeural::ModelT<float, n_input, n_output,
-            RTNeural::GRULayerT<float, n_input, n_hidden>,
+            RTNeural::DenseT<float, n_input, n_encoded>,
+            RTNeural::ReLuActivationT<float, n_encoded>,
+            RTNeural::GRULayerT<float, n_encoded, n_hidden>,
             RTNeural::DenseT<float, n_hidden, n_output>,
             RTNeural::ReLuActivationT<float, n_output>
         >;
 
-        inline std::string getModelFilename(fs::path path) {
-            // get path of RTNeural root directory
-            while(path.filename() != project_root) {
-                path = path.parent_path();
-            }
-            // get path of model file
-            path.append(js_fn);
-
-            return path.string();
+        inline juce::String getModelFilename() {
+            auto const plugin_special_path = nvs::get_designated_plugin_path();
+            auto const model_path = plugin_special_path.getChildFile(js_rtneural_fn);
+            return model_path.getFullPathName();
         }
 
         inline void loadModel(std::ifstream& jsonStream, ModelType& model)
@@ -40,19 +53,16 @@ namespace nvs {
             nlohmann::json modelJson;
             jsonStream >> modelJson;
 
-            auto& gru1 = model.get<0>();
-            RTNeural::torch_helpers::loadGRU<float> (modelJson, "gru.", gru1);
+            auto& in_encoder = model.get<0>();
+            RTNeural::torch_helpers::loadDense<float>(modelJson, "input_encoder.0.", in_encoder);
 
-            auto& dense = model.get<1>();
+            auto& gru0 = model.get<2>();
+            RTNeural::torch_helpers::loadGRU<float> (modelJson, "gru.", gru0);
+
+            auto& dense = model.get<3>();
             RTNeural::torch_helpers::loadDense<float>(modelJson, "dense_layers.0.", dense);
         }
     }   // namespace rtn
-
-    inline juce::File get_designated_plugin_path() {
-        juce::File const app_data_dir = juce::File::getSpecialLocation(juce::File::SpecialLocationType::userApplicationDataDirectory);
-        juce::File const wtianns_files_path = app_data_dir.getChildFile("nvssynthesis").getChildFile("wtianns");
-        return wtianns_files_path;
-    }
 
 
     template<typename sample_t>
@@ -75,5 +85,14 @@ namespace nvs {
         sample_t const c = (y1 - ym1) * 0.5f;
         sample_t const y = (((a * frac) + b) * frac + c) * frac + y0;
         return y;
+    }
+    inline float pitchLinearToLogScale(float frequency, float const f_min= rtn::F_MIN_DETECTED, float const eps=0.0001f) {
+        /*
+         Since the pitch was mapped to a log scale for training, we need to use that mapping when feeding it to the network
+         while leaving it unchanged for the actual sounding frequency.
+         */
+        assert (f_min > 0.f);
+        frequency = frequency >= f_min ? frequency : f_min;
+        return std::logf(frequency - f_min + eps);
     }
 }   // namespace nvs

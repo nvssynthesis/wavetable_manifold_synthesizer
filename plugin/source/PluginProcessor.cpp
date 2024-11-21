@@ -35,10 +35,9 @@ wt_buff_curr_(1, (ModelType::output_size-1) * 2),
 apvts_(*this, nullptr, juce::Identifier("params"), createParameterLayout()),
 logger_(juce::File(nvs::get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
-    auto const modelFilePath =
-        "/Users/nicholassolem/development/CLionProjects/wtianns_rtneural/models/gru.json";
+    juce::String const modelFilePath = nvs::rtn::getModelFilename();
 
-    std::ifstream jsonStream(modelFilePath, std::ifstream::binary);
+    std::ifstream jsonStream(modelFilePath.toStdString(), std::ifstream::binary);
     logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
     // std::cout << "Loading model from path: " << modelFilePath << std::endl;
     nvs::rtn::loadModel(jsonStream, this->model_);
@@ -173,21 +172,13 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
 
     auto constexpr f0_max_trained_on = 4000.f;
     auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
+    auto const voiced_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::voicedness))->load();
     auto const cc0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc0))->load();
     auto const cc1_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc1))->load();
     auto const cc2_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc2))->load();
-    auto const cc3_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc3))->load();
-    auto const cc4_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc4))->load();
-    auto const cc5_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc5))->load();
-    auto const cc6_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc6))->load();
-    auto const cc7_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc7))->load();
-    auto const cc8_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc8))->load();
-    auto const cc9_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc9))->load();
-    auto const cc10_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc10))->load();
 
-    const std::vector<float> inputs {cc0_val, cc1_val,  cc2_val, cc3_val,  cc4_val,
-                                    cc5_val, cc6_val,  cc7_val, cc8_val, cc9_val,
-                                     cc10_val,  f0_val};
+    const std::vector<float> inputs {cc0_val, cc1_val,  cc2_val,
+                                    nvs::pitchLinearToLogScale(f0_val), voiced_val};
     std::vector<float> outputs(nvs::rtn::n_output);
 
     this->model_.forward(&inputs[0]);
@@ -197,16 +188,32 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
         logger_.logMessage("buffer contains NaN");
         return;
     }
+    bool const anti_alias_spectrum = false;
+    if constexpr (anti_alias_spectrum) {
+        // this functionality currently removes all energy above the FUNDAMENTAL, not above where the highest ALLOWED bin should be.
+        // determine highest bin that should have nonzero energy
+        int highest_bin = static_cast<int>(ModelType::output_size);
+        double current_sr = getSampleRate();
+        double model_sr = nvs::rtn::nn_sample_rate;
+
+        auto const freq_frac_of_nyquist = f0_val / (current_sr / 2);
+        auto const highest_allowed_bin = static_cast<int>(freq_frac_of_nyquist * highest_bin);
+        jassert(highest_allowed_bin <= highest_bin);
+        wt_buff_curr_.clear(highest_allowed_bin, highest_bin-highest_allowed_bin);
+    }
     fft_.performRealOnlyInverseTransform(wt_buff_curr_.getWritePointer(0));
 
     int const wavelength = wt_buff_curr_.getNumSamples();
 
-    float mag = wt_buff_curr_.getMagnitude(0, 0, wavelength);
-    if (mag == 0.f) {
-        mag = 1.f;
+    // normalize
+    bool const normalize = true;
+    if (normalize) {
+        float mag = wt_buff_curr_.getMagnitude(0, 0, wavelength);
+        if (mag == 0.f) {
+            mag = 1.f;
+        }
+        wt_buff_curr_.applyGain(1.f / mag);
     }
-
-    wt_buff_curr_.applyGain(1.f / mag);
 
     if (audio_format_writer_ != nullptr) {
         if (!wav_written_) {
@@ -232,8 +239,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBu
             samp += samp_tmp;
         }
 
-        samp *= 0.07f;
-        auto constexpr maxamp = 2.4f;
+        samp *= 0.707f;
+        auto constexpr maxamp = 1.f;
         samp = samp > maxamp ? maxamp : samp;
         samp = samp < -maxamp ? -maxamp : samp;
         for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
@@ -264,6 +271,12 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
     // You could do that either as raw data, or use the XML or ValueTree classes
     // as intermediaries to make it easy to save and load complex data.
     // juce::MemoryOutputStream (destData, true).writeFloat (*ap_f0_);
+
+    // need to do something about apvts
+    // copy state
+    // create xml from state
+    // add stuff to it if theres special info, new attributes
+    // copyXMLtobinary
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
@@ -271,6 +284,12 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
     // *ap_f0_ = juce::MemoryInputStream (data, static_cast<size_t> (sizeInBytes), false).readFloat();
+
+    // need to do something about apvts
+
+    // get bit of data
+    // xml from binary
+    // look at params individually, OR pull out apvts from xml
 }
 
 //==============================================================================
