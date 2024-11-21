@@ -19,17 +19,22 @@ struct params {
     using String = juce::String;
     enum class params_e {
         f0 = 0,
+        voicedness,
+/* 'cc' stands for Cepstral Coefficient, which could be either Bark (BFCC) or Mel (MFCC).
+However, we are currently experimenting with using a dimensionally-reduced set of these, reducing e.g. 11 coefficients
+down to 3. So even though these are still named 'cc', each one has some effect over all cepstral coefficients.
+*/
         cc0,
         cc1,
         cc2,
-        cc3,
-        cc4,
-        cc5,
-        cc6,
-        cc7,
-        cc8,
-        cc9,
-        cc10,
+        // cc3,
+        // cc4,
+        // cc5,
+        // cc6,
+        // cc7,
+        // cc8,
+        // cc9,
+        // cc10,
         num_params
     };
 
