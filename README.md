@@ -1,4 +1,4 @@
-Wavetable Manifold Synthesis (WMS) plugin in [JUCE](https://github.com/juce-framework/JUCE), implemented using
+Wavetable Manifold Synthesis plugin in [JUCE](https://github.com/juce-framework/JUCE), implemented using
 [RTNeural](https://github.com/jatinchowdhury18/RTNeural).
 
 Wavetable Manifold Synthesis (WMS), formerly called Wavetable-Inspired Artificial Neural Network Synthesis (WTIANNS), 
