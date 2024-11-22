@@ -22,6 +22,7 @@ plugin statically assumes a particular architecture corresponding to the one out
 architecture is subject to change, but in general, the two repos will change in a matching manner.
 
 Big TODOs:
+-Debug issue of click/glitches at certain wave-transitioning points
 -Implement MIDI control
 -Provide interface to select from bank of trained networks (including of course custom user models)
 -Provide interface & visualization for navigating through the timbre space in several ways, including:
