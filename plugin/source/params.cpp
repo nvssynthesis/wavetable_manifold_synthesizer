@@ -58,7 +58,7 @@ const std::map<params::params_e, double> params::params_to_default_map = [](){
      for (int i = to_idx(params_e::cc0); i < to_idx(params_e::num_params); ++i) {
           tmp[params::from_idx(i)] = 0.0;    // common default for bfcc params
      }
-     tmp[params::params_e::f0] = 440;
+     tmp[params::params_e::f0] = 110;
      tmp[params_e::voicedness] = 0.9;
      return tmp;
 }();

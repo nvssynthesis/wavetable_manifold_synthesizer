@@ -26,6 +26,7 @@ target_sources(${PROJECT_NAME}
         source/PluginProcessor.cpp
         source/params.cpp
         source/AttachedSlider.cpp
+        source/WMS.cpp
 )
 
 # Sets the include directories of the plugin project.

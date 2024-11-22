@@ -29,29 +29,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        .withOutput ("Output", juce::AudioChannelSet::stereo(), true)
                      #endif
                        ),
-fft_(static_cast<int>(std::log2((ModelType::output_size-1) * 2))),
-wt_buff_prev_(1, (ModelType::output_size-1) * 2),
-wt_buff_curr_(1, (ModelType::output_size-1) * 2),
 apvts_(*this, nullptr, juce::Identifier("params"), createParameterLayout()),
 logger_(juce::File(nvs::get_designated_plugin_path().getChildFile("log.log")),"Welcome")
 {
-    juce::String const modelFilePath = nvs::rtn::getModelFilename();
-
-    std::ifstream jsonStream(modelFilePath.toStdString(), std::ifstream::binary);
-    logger_.logMessage("Loading model from path: " + juce::String(modelFilePath));
-    // std::cout << "Loading model from path: " << modelFilePath << std::endl;
-    nvs::rtn::loadModel(jsonStream, this->model_);
-    logger_.logMessage("Model loaded.");
-
-    juce::File const wav_file = juce::File(nvs::get_designated_plugin_path().getChildFile("debug.wav"));
-    bool const written = wav_file.replaceWithData(nullptr, 0);
-    jassert(written);
-    audio_format_writer_.reset (wav_audio_format_.createWriterFor (new juce::FileOutputStream (wav_file),
-                                      48000.0,
-                                      wt_buff_curr_.getNumChannels(),
-                                      24,
-                                      {},
-                                      0));
+    wms_.addLogger(&logger_);
+    wms_.loadModel(nvs::rtn::getModelFilename());
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -128,8 +110,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
-    juce::ignoreUnused (sampleRate, samplesPerBlock);
-    model_.reset();
+    wms_.reset(sampleRate, samplesPerBlock);
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -165,92 +146,28 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
 void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& outputBuffer,
                                               juce::MidiBuffer& midiMessages)
 {
-    juce::ignoreUnused (midiMessages);
-
     juce::ScopedNoDenormals noDenormals;
     auto totalNumOutputChannels = getTotalNumOutputChannels();
-
-    auto constexpr f0_max_trained_on = 4000.f;
     auto const f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
     auto const voiced_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::voicedness))->load();
     auto const cc0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc0))->load();
     auto const cc1_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc1))->load();
     auto const cc2_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc2))->load();
+    wms_.setFrequency(f0_val);
+    wms_.setVoicedness(voiced_val);
+    wms_.setCepstralCoefficients(cc0_val, cc1_val, cc2_val);
+    wms_.processBlock(outputBuffer, midiMessages);
 
-    const std::vector<float> inputs {cc0_val, cc1_val,  cc2_val,
-                                    nvs::pitchLinearToLogScale(f0_val), voiced_val};
-    std::vector<float> outputs(nvs::rtn::n_output);
-
-    this->model_.forward(&inputs[0]);
-    wt_buff_curr_.copyFrom(0, 0, this->model_.getOutputs(), ModelType::output_size);
-    if (std::isnan(wt_buff_curr_.getSample(0, 0))) {
-        fmt::print("buffer contains NaN");
-        logger_.logMessage("buffer contains NaN");
-        return;
-    }
-    bool const anti_alias_spectrum = false;
-    if constexpr (anti_alias_spectrum) {
-        // this functionality currently removes all energy above the FUNDAMENTAL, not above where the highest ALLOWED bin should be.
-        // determine highest bin that should have nonzero energy
-        int highest_bin = static_cast<int>(ModelType::output_size);
-        double current_sr = getSampleRate();
-        double model_sr = nvs::rtn::nn_sample_rate;
-
-        auto const freq_frac_of_nyquist = f0_val / (current_sr / 2);
-        auto const highest_allowed_bin = static_cast<int>(freq_frac_of_nyquist * highest_bin);
-        jassert(highest_allowed_bin <= highest_bin);
-        wt_buff_curr_.clear(highest_allowed_bin, highest_bin-highest_allowed_bin);
-    }
-    fft_.performRealOnlyInverseTransform(wt_buff_curr_.getWritePointer(0));
-
-    int const wavelength = wt_buff_curr_.getNumSamples();
-
-    // normalize
-    bool const normalize = true;
-    if (normalize) {
-        float mag = wt_buff_curr_.getMagnitude(0, 0, wavelength);
-        if (mag == 0.f) {
-            mag = 1.f;
-        }
-        wt_buff_curr_.applyGain(1.f / mag);
-    }
-
-    if (audio_format_writer_ != nullptr) {
-        if (!wav_written_) {
-            audio_format_writer_->writeFromAudioSampleBuffer(wt_buff_curr_, 0, wavelength);
-            wav_written_ = true;
+    auto peak = outputBuffer.getMagnitude(0, 0, outputBuffer.getNumSamples());
+    if (peak > 1.f) {
+        logger_.logMessage("Peaks exceeded limit; clipping output buffer.");
+        for (auto chan = 0; chan < outputBuffer.getNumChannels(); ++chan) {
+            auto writePtr = outputBuffer.getWritePointer(chan);
+            for (auto samp = 0; samp < outputBuffer.getNumSamples(); ++samp) {
+                writePtr[samp] = juce::jlimit(-1.f, 1.f, writePtr[samp]);
+            }
         }
     }
-
-    phased_hannings_.allowTransition();
-
-    for (int samp_idx = 0; samp_idx < getBlockSize(); ++samp_idx) {
-        auto wins_and_phases = phased_hannings_.calculateWindowAndPhase();
-        float samp = 0;
-        for (auto & wins_and_phase : wins_and_phases){
-            float samp_tmp = nvs::cubicInterp(wt_buff_curr_.getReadPointer(0),
-                static_cast<float>(wins_and_phase.phase_), wavelength);
-            samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[0]);
-            samp += samp_tmp;
-
-            samp_tmp = nvs::cubicInterp(wt_buff_prev_.getReadPointer(0),
-                static_cast<float>(wins_and_phase.phase_), wavelength);
-            samp_tmp *= static_cast<float>(wins_and_phase.window_per_waveform_[1]);
-            samp += samp_tmp;
-        }
-
-        samp *= 0.707f;
-        auto constexpr maxamp = 1.f;
-        samp = samp > maxamp ? maxamp : samp;
-        samp = samp < -maxamp ? -maxamp : samp;
-        for (int channel = 0; channel < totalNumOutputChannels; ++channel) {
-
-            auto* channelData = outputBuffer.getWritePointer (channel);
-            channelData[samp_idx] = samp * 0.9f;
-        }
-        phased_hannings_.increment_phase(f0_val / getSampleRate());
-    }
-    wt_buff_prev_ = wt_buff_curr_;
 }
 
 //==============================================================================
