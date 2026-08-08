@@ -32,7 +32,10 @@ target_sources(${PROJECT_NAME}
 # Sets the include directories of the plugin project.
 target_include_directories(${PROJECT_NAME}
         PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/GUI
+        ${CMAKE_CURRENT_SOURCE_DIR}/params
+        ${CMAKE_CURRENT_SOURCE_DIR}/RTN
+        ${CMAKE_CURRENT_SOURCE_DIR}/Synthesis
         ${LIB_DIR}/RTNeural/RTNeural
         ${LIB_DIR}/chowdsp_fft
         ${LIB_DIR}/fmt/include
