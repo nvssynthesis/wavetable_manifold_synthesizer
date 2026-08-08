@@ -68,7 +68,7 @@ namespace nvs {
 		ModelType model_;
 		juce::dsp::FFT fft_;
 
-		static constexpr bool anti_alias_spectrum_ {false};
+		static constexpr bool anti_alias_spectrum_ {false};	/// TODO
 		size_t counter_ = 0;
 		size_t const counter_lim_ = 1;
 

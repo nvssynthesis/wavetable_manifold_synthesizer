@@ -19,14 +19,15 @@ juce_enable_copy_plugin_step(${PROJECT_NAME})
 juce_generate_juce_header(${PROJECT_NAME})
 add_compile_definitions(EIGEN_STACK_ALLOCATION_LIMIT=1000000)
 
-# Sets the source files of the plugin project.
+file(GLOB_RECURSE PLUGIN_SOURCE_FILES
+        CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/*.h"
+)
+
 target_sources(${PROJECT_NAME}
         PRIVATE
-        PluginEditor.cpp
-        PluginProcessor.cpp
-        params/params.cpp
-        GUI/AttachedSlider.cpp
-        Synthesis/WMS.cpp
+        ${PLUGIN_SOURCE_FILES}
 )
 
 # Sets the include directories of the plugin project.

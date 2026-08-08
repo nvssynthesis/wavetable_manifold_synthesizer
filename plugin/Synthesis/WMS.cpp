@@ -61,7 +61,7 @@ namespace nvs {
                 logger_->logMessage("buffer contains NaN");
                 return;
             }
-            if constexpr (anti_alias_spectrum_) {
+            if constexpr (anti_alias_spectrum_) {   /// TODO
                 // this functionality currently removes all energy above the FUNDAMENTAL, not above where the highest ALLOWED bin should be.
                 // determine highest bin that should have nonzero energy
                 int highest_bin = static_cast<int>(ModelType::output_size);

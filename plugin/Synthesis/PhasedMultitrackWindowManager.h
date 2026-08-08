@@ -2,7 +2,7 @@
 #include <array>
 
 template<typename T>
-inline T wrap01(T x) {
+T wrap01(T x) {
     /*
      this comes from my nvs_libraries/include/nvs_gen.h. if i end up needing more from it, just link it.
      */
@@ -22,6 +22,7 @@ inline double process_phase_for_track(double phase, size_t const window_idx, siz
 inline double hanning(double const phase) {
     return 0.5 * (1.0 - std::cos(2.0 * M_PI * phase));
 }
+
 template<size_t num_overlapping_windows>
 class PhasedMultitrackWindowManager {
 /*
@@ -42,45 +43,18 @@ public:
         return num_overlapping_windows;
     }
 
-    void allowTransition() {
-        // this function should be called at the beginning of each block, since that is where waveforms will be updated
-        for (auto &d : trackwise_data_) {
-            d.allow_waveform_switch_ = true;
-        }
-    }
+    void allowTransition(); // this function should be called at the beginning of each block, since that is where waveforms will be updated
+
     constexpr static size_t num_waveforms {2};
 
     struct WindowAndPhase {
         std::array<double, num_waveforms> window_per_waveform_ {};
         double phase_ {};
     };
-    std::array<WindowAndPhase, num_overlapping_windows> calculateWindowAndPhase() {
-        std::array<WindowAndPhase, num_overlapping_windows> windows_and_phases;
-        for (size_t i = 0; i < num_overlapping_windows; ++i) {
-            windows_and_phases[i].phase_ = process_phase_for_track(master_phase_, i, num_overlapping_windows);
-            // only writing into the window corresponding to the waveform that is supposed to currently sound.
-            // the other should remain silent (zero).
-            windows_and_phases[i].window_per_waveform_[trackwise_data_[i].which_waveform_] = hanning(windows_and_phases[i].phase_);
-            if (windows_and_phases[i].phase_ < trackwise_data_[i].previous_phase_) {
-                if (trackwise_data_[i].allow_waveform_switch_) {
-                    trackwise_data_[i].which_waveform_ += 1;
-                    trackwise_data_[i].which_waveform_ %= num_waveforms;
-                    trackwise_data_[i].allow_waveform_switch_ = false;
-                }
-            }
-            trackwise_data_[i].previous_phase_ = windows_and_phases[i].phase_;
-        }
-        return windows_and_phases;
-    }
-    void increment_phase(double const frequency) {
-        master_phase_ += frequency * num_wins_inv_;
-        if (master_phase_ > 1.0) {
-            master_phase_ -= 1.0;
-        }
-        else if (master_phase_ < 0.0) {
-            assert(false);
-        }
-    }
+
+    std::array<WindowAndPhase, num_overlapping_windows> calculateWindowAndPhase();
+
+    void increment_phase(double const frequency);
 
 private:
     struct TrackwiseData {
@@ -94,3 +68,7 @@ private:
 };
 
 using PhasedFourTrackWindowManager = PhasedMultitrackWindowManager<4>;
+
+
+
+#include "PhasedMultitrackWindowManager.tpp"

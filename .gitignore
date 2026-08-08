@@ -1,5 +1,4 @@
 build/
-libs/
 .idea/
 cmake/
 cmake-build-debug/
