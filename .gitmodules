@@ -1,0 +1,12 @@
+[submodule "libs/JUCE"]
+	path = libs/JUCE
+	url = https://github.com/nvssynthesis/JUCE.git
+[submodule "libs/RTNeural"]
+	path = libs/RTNeural
+	url = https://github.com/nvssynthesis/RTNeural.git
+[submodule "libs/chowdsp_fft"]
+	path = libs/chowdsp_fft
+	url = https://github.com/Chowdhury-DSP/chowdsp_fft.git
+[submodule "libs/fmt"]
+	path = libs/fmt
+	url = https://github.com/fmtlib/fmt.git
