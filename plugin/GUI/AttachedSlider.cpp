@@ -2,9 +2,9 @@
 #include "AttachedSlider.h"
 
 AttachedSlider::AttachedSlider(juce::AudioProcessorValueTreeState &apvts,
-        params::params_e const param,
-        Slider::SliderStyle const sliderStyle,
-        juce::Slider::TextEntryBoxPosition const entryPos)
+                               params::params_e const param,
+                               Slider::SliderStyle const sliderStyle,
+                               juce::Slider::TextEntryBoxPosition const entryPos)
 :
 slider_(sliderStyle, entryPos),
 attachment_(apvts, params::get_param_id(param), slider_)

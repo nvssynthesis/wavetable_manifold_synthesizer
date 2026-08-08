@@ -22,11 +22,11 @@ add_compile_definitions(EIGEN_STACK_ALLOCATION_LIMIT=1000000)
 # Sets the source files of the plugin project.
 target_sources(${PROJECT_NAME}
         PRIVATE
-        source/PluginEditor.cpp
-        source/PluginProcessor.cpp
-        source/params.cpp
-        source/AttachedSlider.cpp
-        source/WMS.cpp
+        PluginEditor.cpp
+        PluginProcessor.cpp
+        params/params.cpp
+        GUI/AttachedSlider.cpp
+        Synthesis/WMS.cpp
 )
 
 # Sets the include directories of the plugin project.

@@ -4,9 +4,9 @@
 #include <chowdsp_fft_juce/chowdsp_fft_juce.h>
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "PhasedMultitrackWindowManager.h"
+#include "Synthesis/PhasedMultitrackWindowManager.h"
 #include "util.h"
-#include "WMS.h"
+#include "Synthesis/WMS.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor  : public juce::AudioProcessor

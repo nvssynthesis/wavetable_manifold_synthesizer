@@ -4,8 +4,8 @@
 #include <juce_dsp/juce_dsp.h>
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "PhasedMultitrackWindowManager.h"
-#include "util.h"
-#include "params.h"
+#include "../util.h"
+#include "../params/params.h"
 
 namespace nvs {
 	enum class WavetableTransitionStrategy {

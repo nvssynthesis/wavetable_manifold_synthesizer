@@ -3,7 +3,7 @@
 #include "PluginEditor.h"
 #include <cmath>
 #include "fmt/base.h"
-#include "params.h"
+#include "params/params.h"
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
     std::vector<std::unique_ptr<juce::RangedAudioParameter>> parameters;
