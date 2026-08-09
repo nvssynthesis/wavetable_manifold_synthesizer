@@ -44,7 +44,7 @@ namespace nvs {
 		void addLogger(juce::FileLogger *logger);
 		void loadModel(juce::String const &modelFilePath);
 
-		void reset (double sr, int samps_per_block);
+		void resetProcessing(double sr, int samps_per_block);
 		void processBlock (juce::AudioBuffer<float>& outputBuffer,  juce::MidiBuffer& midiMessages);
 
 		void setFrequency(float newFrequency);
@@ -70,7 +70,7 @@ namespace nvs {
 
 		static constexpr bool anti_alias_spectrum_ {false};	/// TODO
 		size_t counter_ = 0;
-		size_t const counter_lim_ = 1;
+		size_t const counter_lim_ = 1; // very suspicious
 
 		[[maybe_unused]] WavetableTransitionStrategy wt_transition_strategy_ {WavetableTransitionStrategy::finish_leftover_from_last_block_then_switch};
 		/* This strategy may actually require more than 2 buffers, in case there is a wavelength lasting multiple buffers.
