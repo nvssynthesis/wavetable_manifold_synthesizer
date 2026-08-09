@@ -1,6 +1,75 @@
 #pragma once
 #include <array>
 
+
+
+template<std::floating_point T>
+constexpr T mspWrap(T f) noexcept
+{
+    f = (f > std::numeric_limits<int>::max() || f < std::numeric_limits<int>::min()) ? 0. : f;
+    int k = static_cast<int>(f);
+    T val;
+    if (k <= f)
+        val = f-k;
+    else
+        val = f - (k-1);
+    return val;
+}
+
+template<std::floating_point float_t>
+struct Phasor final {
+private:
+    float_t phase { 0.f };
+    float_t phaseDelta {0.f};	// frequency / samplerate
+    float_t _sampleRate {0.f};
+public:
+    void setSampleRate(float_t sampleRate){
+        assert (sampleRate > 0.f);
+        _sampleRate = sampleRate;
+    }
+    void setPhase(float_t phi){
+        phase = phi;
+    }
+    float_t getPhase() const {
+        return phase;
+    }
+    void reset(){
+        phase = 0.f;
+    }
+    void setPhaseDelta(float_t pd){
+        phaseDelta = pd;
+    }
+    // may be called every sample, so no check for aliasing or divide by 0
+    void setFrequency(float_t frequency){
+        assert(_sampleRate > static_cast<float_t>(0.f));
+        phaseDelta = frequency / _sampleRate;
+    }
+    float_t getFrequency() const {
+        return phaseDelta * _sampleRate;
+    }
+
+    double tick(){
+        assert(phaseDelta == phaseDelta);
+        phase += phaseDelta;
+        phase = mspWrap(phase);
+        return phase;
+    }
+    double tick(bool& crossedOver){
+        assert(phaseDelta == phaseDelta);
+        phase += phaseDelta;
+        const auto unwrappedPhase = phase;
+        phase = mspWrap(phase);
+        if (phase != unwrappedPhase) {
+            crossedOver = true;
+        } else {
+            crossedOver = false;
+        }
+        return phase;
+    }
+
+};
+
+
 template<typename T>
 T wrap01(T x) {
     /*

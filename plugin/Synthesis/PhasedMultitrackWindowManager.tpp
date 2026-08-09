@@ -8,7 +8,9 @@ void PhasedMultitrackWindowManager<num_overlapping_windows>::allowTransition() {
 }
 
 template<size_t num_overlapping_windows>
-auto PhasedMultitrackWindowManager<num_overlapping_windows>::calculateWindowAndPhase() -> std::array<WindowAndPhase, num_overlapping_windows> {
+auto PhasedMultitrackWindowManager<num_overlapping_windows>::calculateWindowAndPhase()
+    -> std::array<WindowAndPhase, num_overlapping_windows>
+{
     std::array<WindowAndPhase, num_overlapping_windows> windows_and_phases;
     for (size_t i = 0; i < num_overlapping_windows; ++i) {
         windows_and_phases[i].phase_ = process_phase_for_track(master_phase_, i, num_overlapping_windows);
