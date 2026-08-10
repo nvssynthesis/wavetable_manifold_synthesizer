@@ -43,7 +43,7 @@ enum class WavetableTransitionStrategy {
 	fade_throughout_block = 1
 };
 
-class WMS   : public juce::HighResolutionTimer {
+class WMS final : public juce::HighResolutionTimer {
 	/*
 	This class implements the wavetable manifold synthesis. Currently in minimum-working example form.
 	*/
@@ -68,14 +68,14 @@ public:
 private:
 
 	std::array<float, static_cast<int>(params::params_e::num_params)> synthesis_params_array_ {
-	[] {
-		constexpr int N = static_cast<int>(params::params_e::num_params);
-		std::array<float, N> arr{};
-		for (int i=0; i < N; ++i) {
-			arr[i] = params::get_default<float>(params::from_idx(i));
-		}
-		return arr;
-	}()
+	    [] {
+		    constexpr int N = static_cast<int>(params::params_e::num_params);
+		    std::array<float, N> arr{};
+		    for (int i=0; i < N; ++i) {
+			    arr[i] = params::get_default<float>(params::from_idx(i));
+		    }
+		    return arr;
+	    }()
 	};
 
 	using ModelType = nvs::rtn::ModelType;
@@ -87,122 +87,57 @@ private:
 
     class SwitchingBuffer {
     public:
-        static constexpr int numChannels = 2;
-
-        SwitchingBuffer()
-            : buffers(numChannels, wavelength)
-        {}
+        SwitchingBuffer();
 
         // the chanel currently being read by synthesis.
         [[nodiscard]]
-        const float* getFreshReadPointer() const noexcept {
-            return buffers.getReadPointer(freshChannel_);
-        }
+        const float* getFreshReadPointer() const noexcept;
 
         // the channel that is safe to overwrite.
         [[nodiscard]]
-        float* getStaleWritePointer() noexcept {
-            return buffers.getWritePointer(staleChannel_);
-        }
+        float* getStaleWritePointer() noexcept;
 
         // copy a complete waveform into the non-playing channel.
         // this does *NOT* make the new waveform active.
-        void writeToStaleChannel(const float* source) noexcept
-        {
-            jassert(source != nullptr);
-
-            buffers.copyFrom(
-                staleChannel_,
-                0,
-                source,
-                wavelength);
-        }
+        void writeToStaleChannel(const float* source) noexcept;
 
         // make the previously-stale channel the new playing channel.
         // O(1): no sample data is copied.
-        void promoteStaleToFresh() noexcept {
-            std::swap(freshChannel_, staleChannel_);
-        }
+        void promoteStaleToFresh() noexcept;
 
         [[nodiscard]]
-        int getFreshChannelIndex() const noexcept {
-            return freshChannel_;
-        }
+        int getFreshChannelIndex() const noexcept;
 
         [[nodiscard]]
-        int getStaleChannelIndex() const noexcept {
-            return staleChannel_;
-        }
+        int getStaleChannelIndex() const noexcept;
 
     private:
         juce::AudioBuffer<float> buffers;
-
+        static constexpr int numChannels = 2;
         int freshChannel_ = 0;
         int staleChannel_ = 1;
     } switchingBuffer;
 
-    class ScratchBuffer
-    {
+    class ScratchBuffer {
     public:
-        ScratchBuffer()
-            : buff(1, wavelength),
-              fft_(static_cast<int>(
-                  std::log2(ModelType::output_size - 1) + 1))
-        {
-            jassert(ModelType::output_size <= wavelength);
-        }
-
+        ScratchBuffer();
         // FOR TIMER THREAD!
         // returns true if the ScratchBuffer is available for a new ANN prediction.
         [[nodiscard]]
-        bool tryBeginWrite() const noexcept {
-            // if the consumer hasn't consumed the previous result, leave it alone and don't generate a new prediction.
-            return !readyToRead_.load(std::memory_order_acquire);
-        }
+        bool tryBeginWrite() const noexcept;
 
         // TIMER THREAD!
         // for after tryBeginWrite() succeeds and network has predicted outputs.
-        void writeAndTransform(const float* source) {
-            jassert(source != nullptr);
-            jassert(!readyToRead_.load(std::memory_order_relaxed));
-
-            buff.copyFrom(
-                0,
-                0,
-                source,
-                ModelType::output_size);
-
-            fft_.performRealOnlyInverseTransform(buff.getWritePointer(0));
-
-            // anti-aliasing would go here:
-            // antiAlias(f0, fs);
-
-            normalize();
-
-            // publish the finished waveform.
-            readyToRead_.store(
-                true,
-                std::memory_order_release);
-        }
+        void writeAndTransform(const float* source);
 
         // FOR AUDIO THREAD!
         // claims ready waveform.
         // upon success, the producer must not touch buff until this consumer has finished copying.
         [[nodiscard]]
-        bool tryAcquireForRead() noexcept {
-            bool expected = true;
-
-            return readyToRead_.compare_exchange_strong(
-                expected,
-                false,
-                std::memory_order_acquire,
-                std::memory_order_relaxed);
-        }
+        bool tryAcquireForRead() noexcept;
 
         [[nodiscard]]
-        const float* getReadPointer() const noexcept {
-            return buff.getReadPointer(0);
-        }
+        const float* getReadPointer() const noexcept;
 
     private:
         void normalize() {
