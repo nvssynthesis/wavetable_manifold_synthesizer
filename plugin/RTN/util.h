@@ -14,32 +14,37 @@ namespace nvs {
     namespace rtn {
         namespace fs = std::filesystem;
 
-        const std::string js_rtneural_fn = "models/rt_model_2024-11-20_20-51-12.json";
+        const std::string js_rtneural_fn = "models/organ-80output.json";
         const std::string project_root = "wtianns_rtneural";
 
         constexpr bool include_voicedness = true;
         constexpr bool include_frequency = true;
         constexpr int n_pitch = static_cast<int>(include_frequency) + static_cast<int>(include_voicedness);
 
-        constexpr int n_mfcc = 11;
-        constexpr int n_mfcc_dim_reduced = 3;
+        constexpr int n_mfcc = 8;
+        constexpr int n_mfcc_dim_reduced = 8;
         constexpr int n_input = n_mfcc_dim_reduced + n_pitch;
 
         constexpr int n_encoded = n_mfcc + n_pitch;
 
         constexpr int n_hidden = 132;
-        constexpr int n_output = 513;
+        constexpr int n_output = 80;
 
         constexpr float F_MIN_DETECTED = 46.f;
 
         constexpr double nn_sample_rate = 16000.0;
 
         using ModelType = RTNeural::ModelT<float, n_input, n_output,
+    // input encoder
             RTNeural::DenseT<float, n_input, n_encoded>,
             RTNeural::ReLuActivationT<float, n_encoded>,
+    // GRU
             RTNeural::GRULayerT<float, n_encoded, n_hidden>,
-            RTNeural::DenseT<float, n_hidden, n_output>,
-            RTNeural::ReLuActivationT<float, n_output>
+    // output layers
+            RTNeural::DenseT<float, n_hidden, n_hidden>,
+            RTNeural::ReLuActivationT<float, n_hidden>,
+            RTNeural::DenseT<float, n_hidden, n_output>
+    // (no output activation = linear; shaping happens in synthesis)
         >;
 
         inline juce::String getModelFilename() {
@@ -59,8 +64,11 @@ namespace nvs {
             auto& gru0 = model.get<2>();
             RTNeural::torch_helpers::loadGRU<float> (modelJson, "gru.", gru0);
 
-            auto& dense = model.get<3>();
-            RTNeural::torch_helpers::loadDense<float>(modelJson, "dense_layers.0.", dense);
+            auto& dense_decode = model.get<3>();
+            RTNeural::torch_helpers::loadDense<float>(modelJson, "dense_layers.0.", dense_decode);
+
+            auto& dense_out = model.get<5>();
+            RTNeural::torch_helpers::loadDense<float>(modelJson, "dense_layers.2.", dense_out);
         }
     }   // namespace rtn
 

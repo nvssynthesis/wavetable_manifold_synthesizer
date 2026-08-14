@@ -1,4 +1,3 @@
-#pragma once
 #include "AttachedSlider.h"
 
 AttachedSlider::AttachedSlider(juce::AudioProcessorValueTreeState &apvts,

@@ -147,12 +147,18 @@ void AudioPluginAudioProcessor::processBlock (AudioBuffer<float>& outputBuffer,
 
     const auto f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
     const auto voiced_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::voicedness))->load();
-    const auto cc0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc0))->load();
-    const auto cc1_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc1))->load();
-    const auto cc2_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::cc2))->load();
+
     wms_.setFrequency(f0_val);
     wms_.setVoicedness(voiced_val);
-    wms_.setCepstralCoefficients(cc0_val, cc1_val, cc2_val);
+
+
+    for (int i = 0; i < params::num_cc_coeffs; ++i) {
+        const auto cc_param = static_cast<params::params_e>(i + params::cc_offset);
+        const auto cc_id = params::get_param_id(cc_param);
+        const auto cc_val = apvts_.getRawParameterValue(cc_id)->load();
+        wms_.setCepstralCoefficient(cc_param, cc_val);
+    }
+
     wms_.processBlock(outputBuffer, midiMessages);
 
     if (const auto peak = outputBuffer.getMagnitude(0, 0, outputBuffer.getNumSamples()); peak > 1.f)

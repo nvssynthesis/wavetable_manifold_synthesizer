@@ -63,7 +63,7 @@ public:
 
 	void setFrequency(float newFrequency);
 	void setVoicedness(float newVoicedness);
-	void setCepstralCoefficients(float cc0, float cc1, float cc2);
+	void setCepstralCoefficient(params::params_e cc, float val);    // actually this could be used to set any member of synthesis array
 
 private:
 

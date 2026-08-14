@@ -27,16 +27,19 @@ down to 3. So even though these are still named 'cc', each one has some effect o
         cc0,
         cc1,
         cc2,
-        // cc3,
-        // cc4,
-        // cc5,
-        // cc6,
-        // cc7,
+        cc3,
+        cc4,
+        cc5,
+        cc6,
+        cc7,
         // cc8,
         // cc9,
         // cc10,
         num_params
     };
+    static constexpr auto cc_offset = static_cast<int>(params_e::cc0);
+    static constexpr auto num_cc_coeffs = static_cast<int>(params_e::num_params) - cc_offset;
+    static_assert(num_cc_coeffs == 8);
 
     template <typename E>
     [[nodiscard]] constexpr static auto to_idx(E e) noexcept {

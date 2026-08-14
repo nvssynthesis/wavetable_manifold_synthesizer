@@ -53,6 +53,7 @@ WMS::ScratchBuffer::ScratchBuffer()
       fft_(static_cast<int>(
           std::log2(ModelType::output_size - 1) + 1))
 {
+    buff.clear();
     jassert(ModelType::output_size <= wavelength);
 }
 
@@ -70,11 +71,13 @@ void WMS::ScratchBuffer::writeAndTransform(const float* source) {
     jassert(source != nullptr);
     jassert(!readyToRead_.load(std::memory_order_relaxed));
 
-    buff.copyFrom(
-        0,
-        0,
-        source,
-        ModelType::output_size);
+    std::transform(
+        source, source + ModelType::output_size,
+        buff.getWritePointer(0),
+        [](const float x) {
+            return std::expm1(std::max(0.0f, x));
+        }
+    );
 
     fft_.performRealOnlyInverseTransform(buff.getWritePointer(0));
 
@@ -129,7 +132,15 @@ void WMS::hiResTimerCallback() {
 }
 
 void WMS::loadModel(juce::String const &modelFilePath) {
-    std::ifstream jsonStream(modelFilePath.toStdString(), std::ifstream::binary);
+    const auto mfp = modelFilePath.toStdString();
+    std::ifstream jsonStream(mfp, std::ifstream::binary);
+    if (!jsonStream.is_open()) {
+        if (logger_) {
+            logger_->logMessage("Model loaded from " + modelFilePath);
+        }
+        jassertfalse;
+        return;
+    }
     nvs::rtn::loadModel(jsonStream, this->model_);
     if (logger_) {
         logger_->logMessage("Model loaded from " + modelFilePath);
@@ -154,6 +165,11 @@ void WMS::generateNextWaveform() {
             synthesis_params_array_[params::to_idx(params::params_e::cc0)],
             synthesis_params_array_[params::to_idx(params::params_e::cc1)],
             synthesis_params_array_[params::to_idx(params::params_e::cc2)],
+            synthesis_params_array_[params::to_idx(params::params_e::cc3)],
+            synthesis_params_array_[params::to_idx(params::params_e::cc4)],
+            synthesis_params_array_[params::to_idx(params::params_e::cc5)],
+            synthesis_params_array_[params::to_idx(params::params_e::cc6)],
+            synthesis_params_array_[params::to_idx(params::params_e::cc7)],
                                         nvs::pitchLinearToLogScale(f0_val),
             synthesis_params_array_[params::to_idx(params::params_e::voicedness)]};
 
@@ -204,10 +220,8 @@ void WMS::setFrequency(const float newFrequency) {
 void WMS::setVoicedness(const float newVoicedness) {
     synthesis_params_array_[params::to_idx(params::params_e::voicedness)] = newVoicedness;
 }
-void WMS::setCepstralCoefficients(const float cc0, const float cc1, const float cc2) {
-    synthesis_params_array_[params::to_idx(params::params_e::cc0)] = cc0;
-    synthesis_params_array_[params::to_idx(params::params_e::cc1)] = cc1;
-    synthesis_params_array_[params::to_idx(params::params_e::cc2)] = cc2;
+void WMS::setCepstralCoefficient(const params::params_e cc, const float val){
+    synthesis_params_array_[params::to_idx(cc)] = val;
 }
 
 void WMS::addLogger(juce::FileLogger *logger) {
