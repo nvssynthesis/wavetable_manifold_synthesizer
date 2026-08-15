@@ -12,6 +12,7 @@ juce_add_plugin(${PROJECT_NAME}
         PLUGIN_CODE WTNN
         FORMATS VST3 AU Standalone
         PRODUCT_NAME "wtianns"
+        COPY_PLUGIN_AFTER_BUILD TRUE
 )
 
 juce_enable_copy_plugin_step(${PROJECT_NAME})
