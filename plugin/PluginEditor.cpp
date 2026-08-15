@@ -2,17 +2,19 @@
 #include "PluginEditor.h"
 
 //==============================================================================
-AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
-    : AudioProcessorEditor (&p), processorRef (p)
-,  sliders_([&]() {
-         std::vector<std::unique_ptr<AttachedSlider>> temp;
-         auto constexpr N = params::to_idx( params::params_e::num_params );
-         temp.reserve(N);
-         for (int i = 0; i < N; ++i) {
-             temp.emplace_back(std::make_unique<AttachedSlider>(p.getApvts(), params::from_idx(i)));
-         }
-         return temp;
-     }())
+WMSProcessorEditor::WMSProcessorEditor (WMSAudioProcessor& p)
+: AudioProcessorEditor (&p)
+, sliders_([&]() {
+          std::vector<std::unique_ptr<AttachedSlider>> temp;
+          auto constexpr N = params::to_idx( params::params_e::num_params );
+          temp.reserve(N);
+          for (int i = 0; i < N; ++i) {
+              temp.emplace_back(std::make_unique<AttachedSlider>(p.getApvts(), params::from_idx(i)));
+          }
+          return temp;
+      }())
+, guiUpdateTimer(*this)
+,  wmsProcessor (p)
 {
 
     for (int i = 0; i < params::to_idx( params::params_e::num_params ); ++i) {
@@ -20,20 +22,21 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     }
 
     setSize (900, 300);
+
+    guiUpdateTimer.startTimerHz(30);
 }
 
-AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
-{
+WMSProcessorEditor::~WMSProcessorEditor() {
+    guiUpdateTimer.stopTimer();
 }
 
 //==============================================================================
-void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
-{
+void WMSProcessorEditor::paint (juce::Graphics& g) {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (juce::Colours::darkslategrey);
 }
 
-void AudioPluginAudioProcessorEditor::resized()
+void WMSProcessorEditor::resized()
 {
     auto x = 0;
     auto y = 0;

@@ -2,19 +2,21 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <chowdsp_fft_juce/chowdsp_fft_juce.h>
-#include <juce_dsp/juce_dsp.h>
 #include <juce_audio_basics/juce_audio_basics.h>
-#include "Synthesis/PhasedMultitrackWindowManager.h"
 #include "RTN/util.h"
 #include "Synthesis/WMS.h"
 
+
+
+
+
 //==============================================================================
-class AudioPluginAudioProcessor  : public juce::AudioProcessor
+class WMSAudioProcessor final : public juce::AudioProcessor
 {
 public:
     //==============================================================================
-    AudioPluginAudioProcessor();
-    ~AudioPluginAudioProcessor() override;
+    WMSAudioProcessor();
+    ~WMSAudioProcessor() override;
 
     //==============================================================================
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
@@ -51,14 +53,23 @@ public:
     juce::AudioProcessorValueTreeState &getApvts() {
         return apvts_;
     }
+    std::array<std::atomic<float>, params::num_params> currentParamNormalizedVals;
+
 private:
     nvs::WMS wms_;
     juce::AudioProcessorValueTreeState apvts_;
 
+
+
+
+
     juce::FileLogger logger_;
 
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WMSAudioProcessor)
 };
+
+
+
 
 juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

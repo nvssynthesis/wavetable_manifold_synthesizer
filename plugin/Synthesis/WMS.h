@@ -116,7 +116,7 @@ private:
         static constexpr int numChannels = 2;
         int freshChannel_ = 0;
         int staleChannel_ = 1;
-    } switchingBuffer;
+    } switchingBuffers[2];
 
     class ScratchBuffer {
     public:
@@ -166,7 +166,8 @@ private:
 	*/
     PhasedFourTrackWindowManager phased_hannings_;
 #endif
-    Phasor<double> phasor;
+    Phasor phasor;
+    RelativePhase relative_phase_;
 
     double sample_rate_;
 	int block_size_;

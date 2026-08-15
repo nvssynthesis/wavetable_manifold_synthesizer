@@ -19,7 +19,7 @@ AudioProcessorValueTreeState::ParameterLayout createParameterLayout() {
     return {parameters.begin(), parameters.end()};
 }
 //==============================================================================
-AudioPluginAudioProcessor::AudioPluginAudioProcessor()
+WMSAudioProcessor::WMSAudioProcessor()
      : AudioProcessor (BusesProperties()
                      #if ! JucePlugin_IsMidiEffect
                       #if ! JucePlugin_IsSynth
@@ -35,15 +35,15 @@ logger_(File(nvs::get_designated_plugin_path().getChildFile("log.log")),"Welcome
     wms_.loadModel(nvs::rtn::getModelFilename());
 }
 
-AudioPluginAudioProcessor::~AudioPluginAudioProcessor() = default;
+WMSAudioProcessor::~WMSAudioProcessor() = default;
 
 //==============================================================================
-const String AudioPluginAudioProcessor::getName() const
+const String WMSAudioProcessor::getName() const
 {
     return JucePlugin_Name;
 }
 
-bool AudioPluginAudioProcessor::acceptsMidi() const
+bool WMSAudioProcessor::acceptsMidi() const
 {
    #if JucePlugin_WantsMidiInput
     return true;
@@ -52,7 +52,7 @@ bool AudioPluginAudioProcessor::acceptsMidi() const
    #endif
 }
 
-bool AudioPluginAudioProcessor::producesMidi() const
+bool WMSAudioProcessor::producesMidi() const
 {
    #if JucePlugin_ProducesMidiOutput
     return true;
@@ -61,7 +61,7 @@ bool AudioPluginAudioProcessor::producesMidi() const
    #endif
 }
 
-bool AudioPluginAudioProcessor::isMidiEffect() const
+bool WMSAudioProcessor::isMidiEffect() const
 {
    #if JucePlugin_IsMidiEffect
     return true;
@@ -70,53 +70,53 @@ bool AudioPluginAudioProcessor::isMidiEffect() const
    #endif
 }
 
-double AudioPluginAudioProcessor::getTailLengthSeconds() const
+double WMSAudioProcessor::getTailLengthSeconds() const
 {
     return 0.0;
 }
 
-int AudioPluginAudioProcessor::getNumPrograms()
+int WMSAudioProcessor::getNumPrograms()
 {
     return 1;   // NB: some hosts don't cope very well if you tell them there are 0 programs,
                 // so this should be at least 1, even if you're not really implementing programs.
 }
 
-int AudioPluginAudioProcessor::getCurrentProgram()
+int WMSAudioProcessor::getCurrentProgram()
 {
     return 0;
 }
 
-void AudioPluginAudioProcessor::setCurrentProgram (int index)
+void WMSAudioProcessor::setCurrentProgram (int index)
 {
     ignoreUnused (index);
 }
 
-const String AudioPluginAudioProcessor::getProgramName (int index)
+const String WMSAudioProcessor::getProgramName (int index)
 {
     ignoreUnused (index);
     return {};
 }
 
-void AudioPluginAudioProcessor::changeProgramName (int index, const String& newName)
+void WMSAudioProcessor::changeProgramName (int index, const String& newName)
 {
     ignoreUnused (index, newName);
 }
 
 //==============================================================================
-void AudioPluginAudioProcessor::prepareToPlay (const double sampleRate, const int samplesPerBlock)
+void WMSAudioProcessor::prepareToPlay (const double sampleRate, const int samplesPerBlock)
 {
     // Use this method as the place to do any pre-playback
     // initialisation that you need..
     wms_.resetProcessing(sampleRate, samplesPerBlock);
 }
 
-void AudioPluginAudioProcessor::releaseResources()
+void WMSAudioProcessor::releaseResources()
 {
     // When playback stops, you can use this as an opportunity to free up any
     // spare memory, etc.
 }
 
-bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool WMSAudioProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
   #if JucePlugin_IsMidiEffect
     ignoreUnused (layouts);
@@ -140,10 +140,66 @@ bool AudioPluginAudioProcessor::isBusesLayoutSupported (const BusesLayout& layou
   #endif
 }
 
-void AudioPluginAudioProcessor::processBlock (AudioBuffer<float>& outputBuffer,
+std::unordered_map<int, params::params_e> CCMap {
+    {20, params::params_e::cc0},
+    {21, params::params_e::cc1},
+    {22, params::params_e::cc2},
+    {23, params::params_e::cc3},
+    {24, params::params_e::cc4},
+    {25, params::params_e::cc5},
+    {26, params::params_e::cc6},
+    {27, params::params_e::cc7},
+    {28, params::params_e::f0},
+    {29, params::params_e::voicedness}
+};
+
+float remap(float x, float in_min, float in_max, float out_min, float out_max) {
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float controlChangeToFloat(const params::params_e param, const int val) {
+
+    if (param == params::params_e::f0) {
+        const auto midiNoteNum = static_cast<float>(val);
+        const float val01 = midiNoteNum / 127.f;
+        return val01;
+    }
+    if (param == params::params_e::voicedness) {
+        const float v01 = static_cast<float>(val) / 127.f;
+        return v01;
+    }
+    // then it's cepstral coef
+    // 0 maps to -3, 127 maps to +3 (covers 3 standard deviations)
+    const float v01 = static_cast<float>(val) / 127.f;
+    const float v = v01 * 6.f - 3.f;    // [-3 .. 3]
+
+
+    // but the param itself has range [-5 to 5]
+    const float vRemap = remap(v, -5.f, 5.f, 0.f, 1.f);
+    return vRemap;
+}
+
+void WMSAudioProcessor::processBlock (AudioBuffer<float>& outputBuffer,
                                               MidiBuffer& midiMessages)
 {
     ScopedNoDenormals noDenormals;
+
+    for (const auto metadata : midiMessages) {
+
+        if (const auto msg = metadata.getMessage(); msg.isController()) {
+            const int ccNum = msg.getControllerNumber();
+            const int ccVal = msg.getControllerValue();
+
+            if (const auto it = CCMap.find(ccNum); it != CCMap.end()) {
+                const auto paramIndex = params::to_idx(it->second);
+                currentParamNormalizedVals[paramIndex].store(controlChangeToFloat(it->second, ccVal));
+            }
+        } else if (msg.isNoteOn()) {
+
+        } else if (msg.isNoteOff()) {
+
+        }
+    }
 
     const auto f0_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::f0))->load();
     const auto voiced_val = apvts_.getRawParameterValue(params::get_param_id(params::params_e::voicedness))->load();
@@ -178,18 +234,18 @@ void AudioPluginAudioProcessor::processBlock (AudioBuffer<float>& outputBuffer,
 }
 
 //==============================================================================
-bool AudioPluginAudioProcessor::hasEditor() const
+bool WMSAudioProcessor::hasEditor() const
 {
     return true; // (change this to false if you choose to not supply an editor)
 }
 
-AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
+AudioProcessorEditor* WMSAudioProcessor::createEditor()
 {
-    return new AudioPluginAudioProcessorEditor (*this);
+    return new WMSProcessorEditor (*this);
 }
 
 //==============================================================================
-void AudioPluginAudioProcessor::getStateInformation (MemoryBlock& destData)
+void WMSAudioProcessor::getStateInformation (MemoryBlock& destData)
 {
     // You should use this method to store your parameters in the memory block.
     // You could do that either as raw data, or use the XML or ValueTree classes
@@ -203,7 +259,7 @@ void AudioPluginAudioProcessor::getStateInformation (MemoryBlock& destData)
     // copyXMLtobinary
 }
 
-void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
+void WMSAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     // You should use this method to restore your parameters from this memory block,
     // whose contents will have been created by the getStateInformation() call.
@@ -220,5 +276,5 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
 // This creates new instances of the plugin..
 AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new AudioPluginAudioProcessor();
+    return new WMSAudioProcessor();
 }

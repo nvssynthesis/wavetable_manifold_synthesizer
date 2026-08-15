@@ -16,35 +16,34 @@ constexpr T mspWrap(T f) noexcept
     return val;
 }
 
-template<std::floating_point float_t>
 struct Phasor final {
 private:
-    float_t phase { 0.f };
-    float_t phaseDelta {0.f};	// frequency / samplerate
-    float_t _sampleRate {0.f};
+    double phase { 0.f };
+    double phaseDelta {0.f};	// frequency / samplerate
+    double _sampleRate {0.f};
 public:
-    void setSampleRate(float_t sampleRate){
+    void setSampleRate(double sampleRate){
         assert (sampleRate > 0.f);
         _sampleRate = sampleRate;
     }
-    void setPhase(float_t phi){
+    void setPhase(double phi){
         phase = phi;
     }
-    float_t getPhase() const {
+    double getPhase() const {
         return phase;
     }
     void reset(){
         phase = 0.f;
     }
-    void setPhaseDelta(float_t pd){
+    void setPhaseDelta(double pd){
         phaseDelta = pd;
     }
     // may be called every sample, so no check for aliasing or divide by 0
-    void setFrequency(float_t frequency){
-        assert(_sampleRate > static_cast<float_t>(0.f));
+    void setFrequency(double frequency){
+        assert(_sampleRate > static_cast<double>(0.f));
         phaseDelta = frequency / _sampleRate;
     }
-    float_t getFrequency() const {
+    double getFrequency() const {
         return phaseDelta * _sampleRate;
     }
 
@@ -67,6 +66,28 @@ public:
         return phase;
     }
 
+};
+
+class RelativePhase {
+    double lastPhase {0.f};
+    double offset {0.f};
+public:
+    void setOffset(const double newOffset) {
+        offset = newOffset;
+    }
+    double tick(const double masterPhase, bool& crossedOver) {
+        double phi = masterPhase + offset;
+        phi = mspWrap(phi);
+
+        if (phi < lastPhase) {  // this will not work if negative frequencies are allowed
+            crossedOver = true;
+        } else {
+            crossedOver = false;
+        }
+
+        lastPhase = phi;
+        return phi;
+    }
 };
 
 

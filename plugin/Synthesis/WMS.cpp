@@ -115,6 +115,7 @@ const float* WMS::ScratchBuffer::getReadPointer() const noexcept {
 //=================================WMS=================================
 WMS::WMS() {
     startTimer(10.0);
+    relative_phase_.setOffset(0.5);
 }
 
 WMS::~WMS() {
@@ -186,26 +187,34 @@ void WMS::processBlock (juce::AudioBuffer<float>& outputBuffer, juce::MidiBuffer
 
     // if a completed ScratchBuffer is available, copy it into the non-playing channel.
     if (scratchBuff.tryAcquireForRead()) {
-        switchingBuffer.writeToStaleChannel(scratchBuff.getReadPointer());
+        switchingBuffers[0].writeToStaleChannel(scratchBuff.getReadPointer());
+        switchingBuffers[1].writeToStaleChannel(scratchBuff.getReadPointer());
     }
 
     for (int samp_idx = 0; samp_idx < block_size_; ++samp_idx) {
-        bool hasCrossedOver = false;
-        const auto phi = static_cast<float>(
-            phasor.tick(hasCrossedOver));
 
-        if (hasCrossedOver) {
-            switchingBuffer.promoteStaleToFresh();
-        }
+        const auto getSamp = [this](const float phi, const int whichBuff, const bool hasCrossedOver){
+            if (hasCrossedOver) {
+                switchingBuffers[whichBuff].promoteStaleToFresh();
+            }
 
-        const float* fresh = switchingBuffer.getFreshReadPointer();
+            const float* fresh = switchingBuffers[whichBuff].getFreshReadPointer();
+            const float sample = nvs::cubicInterp(fresh, phi, wavelength);
+            return sample * hanning(phi);
+        };
 
-        float sample = nvs::cubicInterp(fresh, phi, wavelength);
+        bool hasCrossedOver0 = false;
+        const auto phi0 = static_cast<float>(phasor.tick(hasCrossedOver0));
+        const float samp0 = getSamp(phi0, 0, hasCrossedOver0);
 
-        sample *= hanning(phi);
+        bool hasCrossedOver1 = false;
+        const auto phi1 = static_cast<float>(relative_phase_.tick(phi0, hasCrossedOver1));
+        const float samp1 = getSamp(phi1, 1, hasCrossedOver1);
 
-        outputBuffer.setSample(0, samp_idx, sample * 0.5f);
-        outputBuffer.setSample(1, samp_idx, sample * 0.5f);
+
+        const float sample = 0.3f * (samp0 + samp1);
+        outputBuffer.setSample(0, samp_idx, sample);
+        outputBuffer.setSample(1, samp_idx, sample);
     }
 }
 
